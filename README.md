@@ -13,7 +13,7 @@ To map the data to the continuous space, we use a a sphere packing algorithm to 
 
 <b>Idea: Solve a sphere packing problem</b> $\rightarrow$ Fits  $K$ well-separated balls in a d-dimensional real space:
 $
-\mathbf{u}_1, \dots, \mathbf{u}_K
+\mathbf{u}_1,...,\mathbf{u}_K
 $
 
 We can then use the solution to this problem to set the mean and variance of an encoding distribution conditioned on the category: 
