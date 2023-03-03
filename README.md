@@ -4,7 +4,7 @@ This is an implementation of the paper [diffusing Gaussian Mixtures for Categori
 Learning a categorical distribution comes with its own set of challenges. A successful approach taken by state-of-the-art works is to cast the problem in a continuous domain to take advantage of the impressive performance of the generative models for continuous data. Amongst them are the recently emerging <b>diffusion probabilistic models</b>, which have the observed advantage of generating high-quality samples. Recent advances for categorical generative models have focused on log likelihood improvements. In this work, we propose a generative model for categorical data based on diffusion models with a focus on high-quality sample generation, and propose sampled-based evaluation methods. 
 
 <p align="center">
-<img src="/img/projects/gmcd/overview.png"/>
+<img src="/img/overview.png"/>
 </p>
 The efficacy of our method stems from performing diffusion in the continuous domain while having its parameterization informed by the structure of the categorical nature of the target distribution. Our method of evaluation highlights the capabilities and limitations of different generative models for generating categorical data. 
 
@@ -22,7 +22,7 @@ $ where  $\sigma$ is derived from the min distance between $\mathbf{u}^*_1 ,.., 
 
 Argmax encoding            |  Learned encoding |  Sphere packing encoding
 :-------------------------:|:-------------------------: |:-------------------------:
-<img src="/img/projects/gmcd/argmax.png" width="100"/>  |   <img src="/img/projects/gmcd/std-crop.png" width="100"/> |   <img src="/img/projects/gmcd/sphere.png" width="100"/> 
+<img src="/img/argmax.png" width="100"/>  |   <img src="/img/learned.png" width="100"/> |   <img src="/img/sphere.png" width="100"/> 
 
 ## Parameterizing the denoising step
 This parameterization induces a structure on the targeted distribution, which enables us to design a task-cognizant Gaussian Mixtures denoising function:
