@@ -17,7 +17,7 @@ The efficacy of our method stems from performing diffusion in the continuous dom
 To map the data to the continuous space, we use a a sphere packing algorithm to set a flexible and fixed encoding.
 
 <b>Idea: Solve a sphere packing problem</b> 
-$\rightarrow$ Fits  $K$ well-separated balls in a d-dimensional real space: $ u_ 1 $
+$\rightarrow$ Fits  $K$ well-separated balls in a d-dimensional real space: $ \amthbf{u}_ 1 $
 
 We can then use the solution to this problem to set the mean and variance of an encoding distribution conditioned on the category: 
 $
