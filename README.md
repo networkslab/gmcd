@@ -12,6 +12,6 @@ The efficacy of our method stems from performing diffusion in the continuous dom
 To map the data to the continuous space, we use a a sphere packing algorithm to set a flexible and fixed encoding.
 
 <b>Idea: Solve a sphere packing problem</b> $\rightarrow$ Fits  $K$ well-separated balls in a d-dimensional real space:
-$$ \mathbf{u}_1 $$
+$ \mathbf{u}_1 $
 
 
