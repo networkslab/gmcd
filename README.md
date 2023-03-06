@@ -1,6 +1,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.5.1/katex.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/github-markdown-css/2.2.1/github-markdown.css"/>
 
+md.use(mk, {"throwOnError" : false, "errorColor" : " #cc0000"});
+
 # Diffusing Gaussian Mixtures for Categorical data
 This is an implementation of the paper [diffusing Gaussian Mixtures for Categorical data](https://arxiv.org/abs/2106.0606)
 
