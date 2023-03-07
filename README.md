@@ -2,12 +2,13 @@
 
 
 # Diffusing Gaussian Mixtures for Categorical data
-This is an implementation of the paper [diffusing Gaussian Mixtures for Categorical data](https://arxiv.org/abs/2106.0606)
+This is an implementation of the paper Diffusing Gaussian Mixtures for Categorical data.
  
 
-## Requirements
-* tensorflow (>0.12)
-* networkx
+## Installation
+```bash
+pip install -r requirements.txt 
+```
 
 ## Run the demo
 
@@ -29,20 +30,17 @@ Learning a categorical distribution comes with its own set of challenges. A succ
 The efficacy of our method stems from performing diffusion in the continuous domain while having its parameterization informed by the structure of the categorical nature of the target distribution. Our method of evaluation highlights the capabilities and limitations of different generative models for generating categorical data. 
 
 
-
-
-## Team
-* [Florence Regol](/docs/members/flo)
-* [Mark Coates](/docs/members/mark.md)
-
 ## Citation
 
 This project was published at AAAI 2023.
 
 ```
-@inproceedings{regol2023, 
-author={F. Regol and M. Coates}
+@inproceedings{regol2023,
+	title = {Diffusing Gaussian Mixtures for Generating Categorical Data},
+	author={Regol, Florence and Coates, Mark},
+	booktitle = {Proc. AAAI Conf. on Artificial Intelligence},
+	year = {2023}
+}
 ```
 
-[ArXiv link](https://arxiv.org/abs/2106.0606)
 
