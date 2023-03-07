@@ -284,7 +284,7 @@ class TrainTemplate:
 
                 self.optimizer.zero_grad()
                 loss.backward()
-               
+
                 torch.nn.utils.clip_grad_norm_(parameters_to_optimize,
                                                max_gradient_norm)
                 self.optimizer.step()
@@ -377,8 +377,6 @@ class TrainTemplate:
                 print("=" * 50 + "\nTest performance: %lf" % (test_NLL))
             detailed_scores["original_NLL"] = test_NLL
             best_save_dict["test"] = detailed_scores
-            self.task.finalize_summary(writer, max_iterations,
-                                       self.checkpoint_path)
 
             sample_eval = self.task.evaluate_sample(num_samples=10 *
                                                     self.NUM_SAMPLES,
