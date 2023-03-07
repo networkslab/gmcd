@@ -28,12 +28,11 @@ class ArTransformerDiffusion(GaussianDiffusion):
             betas=get_named_beta_schedule('cosine', T),
             model_mean_type=ModelMeanType.EPSILON,
             model_var_type=ModelVarType.FIXED_LARGE,
-            loss_type=diffusion_params.loss_type,
             rescale_timesteps=False, silence=silence, figure_path=figure_path)
-        # super().__init__()
-        self.loss_type = diffusion_params.loss_type
+
         self.extActFixed = extActFixed
         K = extActFixed.fixed_embedding.num_embeddings
+        self.loss_type = LossType.NLL
         self.K = K
         self.S = S
         self.T = T
@@ -156,7 +155,6 @@ class ArTransformerDiffusion(GaussianDiffusion):
         z_t = self.q_sample(z_0, t, noise=noise)
         z_t = z_t.reshape(-1, self.S, self.d)
         # to do, z_t from z_t-1
-        check_entropy_diffused_x = False
         check_fraction_same_x = False
         if self.loss_type in [LossType.NOISY_SOFT, LossType.TRUE_NOISY_SOFT, LossType.NOISY_GUIDED, LossType.NOISY_GUIDED_SHARP]:
 
@@ -173,7 +171,6 @@ class ArTransformerDiffusion(GaussianDiffusion):
                 p_w = th.div(p_w_power, norm_w).permute(
                     1, 0).view(-1, self.S, self.K)
 
-            
             c = D.categorical.Categorical(p_w)
             w = c.sample()
             mask = (t == th.zeros_like(t)).int().view(-1, 1)
@@ -249,13 +246,12 @@ class ArTransformerDiffusion(GaussianDiffusion):
         return_dict.update(out)
         return return_dict
 
-   
     def p_sample(self, z_t, t):  # denoising step
         # x \sim p(X|z^t)
         # z^t-1 \sim p(Z^t-1|X=x)
         z_t = z_t.reshape(-1, self.S, self.d)
         b = z_t.shape[0]
-        
+
         logits = self.dynamics(t, z_t)  # B, S, K
         p_w_given_past = D.categorical.Categorical(logits=logits)
         w = p_w_given_past.sample()

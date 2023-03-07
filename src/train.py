@@ -41,19 +41,13 @@ class TrainSyntheticModeling(TrainTemplate):
 
 
 def start_training(runconfig,
-                   TrainClass,
                    return_result=False,
-                   silence=False,
                    store_ckpt=""):
-
-    loss_freq = 50
 
     # Setup training
     trainModule = TrainSyntheticModeling(runconfig,
                                          batch_size=runconfig.batch_size,
                                          checkpoint_path=runconfig.checkpoint_path,
-                                         multi_gpu=runconfig.use_multi_gpu,
-                                         silence=silence,
                                          path_experiment=store_ckpt)
 
     
@@ -67,7 +61,7 @@ def start_training(runconfig,
 
     result = trainModule.train_model(
         runconfig.max_iterations,
-        loss_freq=loss_freq,
+        loss_freq=50,
         eval_freq=runconfig.eval_freq,
         save_freq=runconfig.save_freq,
         no_model_checkpoints=runconfig.no_model_checkpoints,

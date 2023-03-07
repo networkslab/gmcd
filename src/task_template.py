@@ -93,6 +93,12 @@ class TaskTemplate:
         self.training_dict = training_dict
         self.test_dict = test_dict
 
+        self.frac_val_seen = get_frac_overlap(
+            self.training_dict, self.test_dict)
+        if not self.silence:
+            print('frac test in train', self.frac_val_seen)
+        print('frac test in train', self.frac_val_seen)
+
     def data_to_dict(self, np_data):
         dict_data = {}
         for i in tqdm(range(np_data.shape[0])):
@@ -273,10 +279,6 @@ class TaskTemplate:
 
         detailed_metrics["bpd"] = self.loss_to_bpd(detailed_metrics['nll'])
 
-        with torch.no_grad():
-            self._eval_finalize_metrics(
-                detailed_metrics, is_test=is_test, **kwargs)
-
         self.model.train()
         eval_time = int(time.time() - start_time)
         if not self.silence:
@@ -299,7 +301,6 @@ class TaskTemplate:
             get_ldj_per_layer=True,
             beta=self.beta_scheduler.get(iteration),
             length=x_length)
-
 
         loss = (neg_boundnl / x_length.float()).mean()
         self.summary_dict["ldj"].append(loss.item())
@@ -332,8 +333,6 @@ class TaskTemplate:
                 val = [v for sublist in val for v in sublist]
                 writer.add_histogram(summary_key, np.array(val), iteration)
                 self.summary_dict[key] = list()
-
-    
 
     def _get_next_batch(self):
         # Try to get next batch. If one epoch is over, the iterator throws an error, and we start a new iterator
@@ -372,8 +371,6 @@ class TaskTemplate:
             std_loss = (ldj / x_length.float()).std()
 
             return {'nll': loss, 'std_nll': std_loss}
-
-   
 
     @staticmethod
     def batch_to_device(batch):

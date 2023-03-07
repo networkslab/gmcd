@@ -96,8 +96,7 @@ def print_detailed_scores_and_sampling(detailed_scores, sample_eval):
 
 def check_if_best_than_saved(silence, last_save, eval_NLL, detailed_scores,
                              best_save_dict, index_iter,
-                             get_checkpoint_filename, checkpoint_path,
-                             export_best_results, evaluation_dict, save_train_model):
+                             get_checkpoint_filename, checkpoint_path, evaluation_dict, save_train_model):
     # If model performed better on validation than any other iteration so far => save it and eventually replace old model
     if eval_NLL < best_save_dict["metric"]:
         best_save_iter = get_checkpoint_filename(index_iter + 1)
@@ -118,7 +117,6 @@ def check_if_best_than_saved(silence, last_save, eval_NLL, detailed_scores,
             best_save_dict["file"] = best_save_iter
             last_save = best_save_iter
             save_train_model(index_iter + 1)
-        export_best_results(checkpoint_path, index_iter + 1)
         export_result_txt(best_save_iter, best_save_dict, checkpoint_path)
     evaluation_dict[index_iter + 1] = best_save_dict["metric"]
 

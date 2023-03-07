@@ -3,18 +3,17 @@ from src.train import start_training
 from src.train import TrainSyntheticModeling
 
 
-S =6 
+S = 6
 dataset = 'sort'
 
 
 def train(set_size, dataset):
 
     run_config = SyntheticRunConfig(model='FCDM', dataset=dataset, S=set_size)
-    start_training(run_config, TrainSyntheticModeling)
-       
+    start_training(run_config)
 
 
-#train(set_size=S, max_iterations=5000, encoding_dim=5,  dataset=dataset)
+train(set_size=S,   dataset=dataset)
 # main_path = 'checkpoints/'+dataset+'/S_' + \
 #     str(S)+'_K_'+str(S)
 # if S == 6:

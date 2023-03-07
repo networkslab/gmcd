@@ -30,8 +30,7 @@ class TaskSyntheticModeling(TaskTemplate):
             "beta": 0
         }
 
-    def create_scheduler(scheduler_params, param_name=None):
-        sched_type = scheduler_params.beta_scheduler_type
+    def create_scheduler(self, scheduler_params, param_name=None):
         end_val = scheduler_params.beta_scheduler_end_val
         start_val = scheduler_params.beta_scheduler_start_val
         stepsize = scheduler_params.beta_scheduler_step_size
@@ -88,7 +87,7 @@ class TaskSyntheticModeling(TaskTemplate):
         S = self.model.S
         K = self.model.K
 
-        exact_prob, sum_prob = self.exact_pmf(S, K)
+
 
         histogram_samples_per_p = self.train_dataset.samples_to_dict(samples_x)
         size_support_dict = self.train_dataset.get_size_support_dict()
@@ -112,12 +111,7 @@ class TaskSyntheticModeling(TaskTemplate):
         p_total = p_likely+p_rare
         metrics_dict = {'p_rare': p_rare, 'p_likely': p_likely,
                         'unseen_support': unseen_support, 'train_slice': train_slice, 'p_total': p_total}
-        if exact_prob is not None:
-
-            metrics_dict['d_tv'], metrics_dict['hellinger'], metrics_dict['tv_ood'], metrics_dict['exact_kl'] = get_exact_metrics(
-                exact_prob, K, S, M=num_samples)
-            metrics_dict['sum_prob'] = sum_prob
-
+        
         metrics_dict['emp_d_tv'], metrics_dict['emp_hellinger'], metrics_dict['emp_tv_ood'] = get_diff_metric(
             histogram_samples_per_p, size_support_dict, M=num_samples)
 

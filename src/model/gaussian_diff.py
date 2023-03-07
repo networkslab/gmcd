@@ -31,7 +31,6 @@ look_sample_process
         betas,
         model_mean_type,
         model_var_type,
-        loss_type,
         rescale_timesteps=False, silence=True,
             figure_path=""
     ):
@@ -41,7 +40,6 @@ look_sample_process
         self.denoise_fn = denoise_fn
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
-        self.loss_type = loss_type
         self.rescale_timesteps = rescale_timesteps
         self.silence = silence
         self.figure_path = figure_path
@@ -286,75 +284,7 @@ look_sample_process
             th.exp(0.5 * out["log_variance"]) * noise
         return {"sample": sample, "pred_xstart": out["pred_xstart"]}
 
-    #@th.no_grad()
-    # def sample(self, num_samples, use_q_posterior=False, watch_z_t=False, return_z0=False):
-    #     return self.p_sample_loop(
-    #         shape=(num_samples, self.d_in), watch_z_t=watch_z_t, return_z0=return_z0)
-
-    # def p_sample_loop(
-    #     self,
-    #     shape,
-    #     noise=None,
-    #     watch_z_t=False,
-    #     return_z0=False
-    # ):
-    #     """
-    #     Generate samples from the model.
-
-    #     :param model: the model module.
-    #     :param shape: the shape of the samples, (N, C, H, W).
-    #     :param noise: if specified, the noise from the encoder to sample.
-    #                   Should be of the same shape as `shape`.
-    #     :return: a non-differentiable batch of samples.
-    #     """
-    #     final = None
-    #     for sample in self.p_sample_loop_progressive(shape, noise=noise, watch_z_t=watch_z_t, return_z0=return_z0):
-    #         final = sample
-    #     return final["sample"]
-
-    # def p_sample_loop_progressive(
-    #     self,
-    #     shape,
-    #     noise=None,
-    #     watch_z_t=False,
-    #     return_z_0=False
-    # ):
-        """
-        Generate samples from the model and yield intermediate samples from
-        each timestep of diffusion.
-
-        Arguments are the same as p_sample_loop().
-        Returns a generator over dicts, where each dict is the return value of
-        p_sample().
-        """
-        device = next(self.denoise_fn.parameters()).device
-
-        assert isinstance(shape, (tuple, list))
-        if noise is not None:
-            z = noise
-        else:
-            z = th.randn(*shape, device=device)
-        indices = list(range(self.num_timesteps))[::-1]
-        z_0 = z
-        if watch_z_t:
-            zs = [z]
-
-        for i in indices:
-            t = th.tensor([i] * shape[0], device=device)
-            with th.no_grad():
-                out = self.p_sample(
-                    z,
-                    t
-                )
-                if return_z_0:
-                    yield out, z_0
-                else:
-                    yield out
-                z = out["sample"]
-                if watch_z_t:
-                    zs.append(z)
-        if watch_z_t:
-            look_sample_process(self.figure_path, zs, shape[0], self.T)
+   
 
     def _vb_terms(
         self, x_start, x_t, t, clip_denoised=True, model_kwargs=None
@@ -416,81 +346,7 @@ look_sample_process
 
             return z, ldj
 
-    def training_losses(self, x_start, t, x_cat, noise=None):
-        """
-        Compute training losses for a single timestep.
-
-        :param model: the model to evaluate loss on.
-        :param x_start: the [N x C x ...] tensor of inputs.
-        :param t: a batch of timestep indices.
-        :param model_kwargs: if not None, a dict of extra keyword arguments to
-            pass to the model. This can be used for conditioning.
-        :param noise: if specified, the specific Gaussian noise to try to remove.
-        :return: a dict with the key "loss" containing a tensor of shape [N].
-                 Some mean or variance settings may also have other keys.
-        """
-        model_kwargs = {}
-        if noise is None:
-            noise = th.randn_like(x_start)
-        x_t = self.q_sample(x_start, t, noise=noise)
-
-        terms = {}
-
-        if self.loss_type == LossType.KL or self.loss_type == LossType.RESCALED_KL:
-            terms["loss"] = self._vb_terms(
-                x_start=x_start,
-                x_t=x_t,
-                t=t,
-                clip_denoised=False,
-                model_kwargs=model_kwargs,
-            )["output"]
-            if self.loss_type == LossType.RESCALED_KL:
-                terms["loss"] *= self.num_timesteps
-        elif self.loss_type == LossType.MSE or self.loss_type == LossType.RESCALED_MSE:
-            model_output = self.denoise_fn(
-                x_t, self._scale_timesteps(t), **model_kwargs)
-
-            if self.model_var_type in [
-                ModelVarType.LEARNED,
-                ModelVarType.LEARNED_RANGE,
-            ]:
-                B, C = x_t.shape[:2]
-                assert model_output.shape == (B, C * 2, *x_t.shape[2:])
-                model_output, model_var_values = th.split(
-                    model_output, C, dim=1)
-                # Learn the variance using the variational bound, but don't let
-                # it affect our mean prediction.
-                frozen_out = th.cat(
-                    [model_output.detach(), model_var_values], dim=1)
-                terms["vb"] = self._vb_terms(
-                    x_start=x_start,
-                    x_t=x_t,
-                    t=t,
-                    clip_denoised=False,
-                )["output"]
-                if self.loss_type == LossType.RESCALED_MSE:
-                    # Divide by 1000 for equivalence with initial implementation.
-                    # Without a factor of 1/1000, the VB term hurts the MSE term.
-                    terms["vb"] *= self.num_timesteps / 1000.0
-
-            target = {
-                ModelMeanType.PREVIOUS_X: self.q_posterior_mean_variance(
-                    x_start=x_start, x_t=x_t, t=t
-                )[0],
-                ModelMeanType.START_X: x_start,
-                ModelMeanType.EPSILON: noise,
-            }[self.model_mean_type]
-            assert model_output.shape == target.shape == x_start.shape
-            terms["mse"] = sum_flat((target - model_output) ** 2)
-            if "vb" in terms:
-                terms["loss"] = terms["mse"] + 0.1*terms["vb"]
-            else:
-                terms["loss"] = terms["mse"]
-        else:
-            raise NotImplementedError(self.loss_type)
-
-        return terms
-
+  
     def _prior(self, x_start):
         """
         Get the prior KL term for the variational lower-bound, measured in

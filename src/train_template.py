@@ -353,7 +353,6 @@ class TrainTemplate:
                                              index_iter,
                                              self.get_checkpoint_filename,
                                              self.checkpoint_path,
-                                             self.task.export_best_results,
                                              evaluation_dict, save_train_model)
 
                 # Independent of evaluation, the model is saved every "save_freq" steps. This prevents loss of information if model does not improve for a while

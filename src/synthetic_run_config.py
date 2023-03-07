@@ -9,7 +9,7 @@ class SyntheticRunConfig(RunConfig):
                  K=None,  # by default, K=S
                  encoding_dim=3,
                  var_coef=0.5,
-                 max_iterations=10000,
+                 max_iterations=1000,
                  T=10,
                  max_train_time=None,
                  corrected_var=True) -> None:

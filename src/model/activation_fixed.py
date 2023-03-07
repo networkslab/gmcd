@@ -8,7 +8,7 @@ from src.model.apple_wraping import get_mean_wrapper
 sys.path.append("../../../")
 
 
-class ExtActFixed():
+class ExtActFixed(nn.Module):
     def __init__(self,
                  d,
                  K,

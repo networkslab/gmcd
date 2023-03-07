@@ -17,7 +17,7 @@ from src.model.activation_fixed import ExtActFixed
 from src.model.distributions import GaussianDistribution
 
 
-class LinearCategoricalEncoding():
+class LinearCategoricalEncoding(nn.Module):
     """
     Simple encoder q(Z|X). q(Z|X) = \prod^S_s q(Z_s|X_s), q(Z_s|X_s) = Norm(mu_XS, sigma)
     """
