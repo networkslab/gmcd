@@ -2,7 +2,7 @@
 
 
 # Diffusing Gaussian Mixtures for Categorical data
-This is an implementation of the paper Diffusing Gaussian Mixtures for Categorical data.
+This is a pytorch implementation of the paper: Diffusing Gaussian Mixtures for Categorical data.
  
 
 ## Installation
