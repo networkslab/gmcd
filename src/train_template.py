@@ -255,13 +255,7 @@ class TrainTemplate:
                                       base_name="eval",
                                       iteration=start_iter)
 
-            def get_keep_going(time_per_step_list, index_iter):
-                if max_train_time is not None:
-                    time_to_train = np.sum(time_per_step_list)
-                    return time_to_train < max_train_time
-                else:
-                    return not index_iter == int(max_iterations)
-
+           
             index_iter = start_iter
             keep_going = True
             self.loss_prev = None
@@ -352,7 +346,7 @@ class TrainTemplate:
                         os.remove(last_save)
                     last_save = self.get_checkpoint_filename(index_iter + 1)
                 index_iter += 1
-                keep_going = get_keep_going(time_per_step_list, index_iter)
+                keep_going = not index_iter == int(max_iterations)
             # End training loop
             print('time to train ', np.sum(time_per_step_list))
 
