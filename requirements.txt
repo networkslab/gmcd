@@ -1,5 +1,4 @@
 axial_positional_embedding==0.2.1
-images==0.1dev
 linear_attention_transformer==0.19.1
 matplotlib==3.7.1
 numpy==1.23.5

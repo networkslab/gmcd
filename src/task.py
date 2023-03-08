@@ -1,4 +1,4 @@
-from src.Scheduler import ExponentialScheduler
+from optimizer.Scheduler import ExponentialScheduler
 from src.datasets.synthetic import SyntheticDataset
 from src.metrics import generalization_metric, get_diff_metric, get_exact_metrics
 from src.sample_output import SamplesEvaluation

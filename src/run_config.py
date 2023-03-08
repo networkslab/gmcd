@@ -8,30 +8,19 @@ Default config. Will usually be overriden by a task specific config class.
 
 class RunConfig():
     def __init__(self,
-                 model,
-                 encoding_dim=3,
-                 var_coef=1,
                  max_iterations=10000,
-                 T=10,
-                 max_train_time=None) -> None:
+                 T=10) -> None:
         self.set_boring_config()
 
         self.seed = 3  # 0
-        self.model = 'FCDM'  # FCDM, CNF, ...
+
         # Maximum number of epochs to train
         self.print_freq = 100  # Frequency loss information
         self.eval_freq = 5000  # Frequency the model should be evaluated
         self.batch_size = 1024  # Batch size
         self.learning_rate = 7.5e-4  # Learning rate of the optimizer
         self.scale_loss = 1e-4
-        self.fixed = False
-        self.model = model
-        self.encoding_dim = encoding_dim
-        self.var_coef = var_coef
         self.max_iterations = max_iterations
-        self.max_train_time = max_train_time
-
-        self.fixed = True
         self.diffusion_model = 'transformer'
         self.T = T
         self.input_dp_rate = 0.2
