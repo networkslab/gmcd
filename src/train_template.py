@@ -7,7 +7,7 @@ import pickle
 import time
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from src.train_helper import check_if_best_than_saved, export_result_txt, model_param_to_name, prepare_checkpoint, print_detailed_scores_and_sampling, save_train_model_fun, store_model_dict, check_params
+from src.train_helper import check_if_best_than_saved, export_result_txt, prepare_checkpoint, print_detailed_scores_and_sampling, save_train_model_fun, store_model_dict, check_params
 from src.mutils import Tracker, get_device,  get_param_val, create_optimizer_from_args, load_model, write_dict_to_tensorboard
 
 
@@ -22,20 +22,16 @@ class TrainTemplate:
                  batch_size,
                  checkpoint_path,
                  debug=False,
-                 name_prefix="",
-                 multi_gpu=False,
-                 silence=False):
+                 name_prefix=""):
         self.NUM_SAMPLES = 1000
-        model_name = model_param_to_name(runconfig)
+        model_name = 'GMCD'
         path_model_prefix = os.path.join(self.path_model_prefix, model_name)
         name_prefix = os.path.join(name_prefix, path_model_prefix)
         self.batch_size = batch_size
         # Remove possible spaces. Name is used for creating default checkpoint path
         self.name_prefix = name_prefix.strip()
         self.runconfig = runconfig
-        self.silence = silence
         self.scale_loss = self.runconfig.scale_loss
-
         self.checkpoint_path, self.figure_path = prepare_checkpoint(
             checkpoint_path, self.name_prefix)
         # store model cinfo
@@ -47,8 +43,7 @@ class TrainTemplate:
 
         # Load task
         self.task = self._create_task(runconfig,
-                                      debug=debug,
-                                      silence=self.silence)
+                                      debug=debug)
         # Load optimizer and checkpoints
         self._create_optimizer(runconfig)
 
@@ -62,7 +57,7 @@ class TrainTemplate:
             gamma=optimizer_params.lr_decay_factor)
         self.lr_minimum = optimizer_params.lr_minimum
 
-    def nll_evaluation(self, silence=False, checkpoint_model=None, return_result=False):
+    def nll_evaluation(self,  checkpoint_model=None, return_result=False):
         # Function for evaluation/testing of a model
 
         # Load the "best" model by first loading the most recent one and determining the "best" model
@@ -85,16 +80,15 @@ class TrainTemplate:
                 % (best_save_iter))
         else:
             load_model(best_save_iter, model=self.model)
-        if not silence:
-            # Print saved information of performance on validation set
-            print("\n" + "-" * 100 + "\n")
-            print("Best evaluation iteration", best_save_iter)
-            print("Best evaluation metric", best_save_dict["metric"])
-            print("Detailed metrics")
-            for metric_name, metric_val in best_save_dict[
-                    "detailed_metrics"].items():
-                print("-> %s: %s" % (metric_name, str(metric_val)))
-            print("\n" + "-" * 100 + "\n")
+        # Print saved information of performance on validation set
+        print("\n" + "-" * 100 + "\n")
+        print("Best evaluation iteration", best_save_iter)
+        print("Best evaluation metric", best_save_dict["metric"])
+        print("Detailed metrics")
+        for metric_name, metric_val in best_save_dict[
+                "detailed_metrics"].items():
+            print("-> %s: %s" % (metric_name, str(metric_val)))
+        print("\n" + "-" * 100 + "\n")
 
         # Test model
         self.task.checkpoint_path = self.checkpoint_path
@@ -102,9 +96,9 @@ class TrainTemplate:
 
         return detailed_metrics
 
-    def complete_evaluation(self, num_trial=4, silence=False):
+    def complete_evaluation(self, num_trial=4):
         print('Starting the eval....')
-        check_params(self.model, silence=False)
+        check_params(self.model)
         NUM_SAMPLES = 10000
 
         index = 0
@@ -112,7 +106,7 @@ class TrainTemplate:
         print('recomputing stat :', recompute_stat)
         detailed_metrics_test = {}
         try:
-            detailed_metrics_test = self.nll_evaluation(silence=silence)
+            detailed_metrics_test = self.nll_evaluation()
         except:
             print('couldnt get a best iter')
             self.load_recent_model()
@@ -136,10 +130,7 @@ class TrainTemplate:
             print('time_for_sampling', time_for_sampling)
 
         list_sample_eval.append(sample_eval)
-        if silence:
-            iter_trial = range(num_trial-1)
-        else:
-            iter_trial = tqdm(range(num_trial-1))
+        iter_trial = tqdm(range(num_trial-1))
         for _ in iter_trial:
             index += 1
             if empty_sample_eval.is_stored(self.figure_path, index):
@@ -179,12 +170,11 @@ class TrainTemplate:
                     eval_freq=2000,
                     save_freq=1e5,
                     max_gradient_norm=0.25,
-                    no_model_checkpoints=False,
-                    max_train_time=None):
+                    no_model_checkpoints=False):
 
         parameters_to_optimize = list(self.model.parameters())
 
-        check_params(self.model, silence=self.silence)
+        check_params(self.model)
         # Setup dictionary to save evaluation details in
         checkpoint_dict = self.load_recent_model()
         # Iteration to start from
@@ -236,10 +226,9 @@ class TrainTemplate:
 
             self.model.eval()
             self.task.initialize()
-            if not self.silence:
-                print("=" * 50 + "\nStarting training...\n" + "=" * 50)
+            print("=" * 50 + "\nStarting training...\n" + "=" * 50)
 
-                print("Performing initial evaluation...")
+            print("Performing initial evaluation...")
 
             eval_loss, detailed_scores = self.task.eval(initial_eval=True)
             start = time.time()
@@ -301,11 +290,10 @@ class TrainTemplate:
                     loss_avg = train_losses.get_mean(reset=True)
                     self.loss_prev = loss_avg
                     train_time_avg = time_per_step.get_mean(reset=True)
-                    if not self.silence:
-                        print(
-                            "Training iteration %i|%i (%4.2fs). Loss: %6.5f." %
-                            (index_iter + 1, max_iterations, train_time_avg,
-                             loss_avg))
+                    print(
+                        "Training iteration %i|%i (%4.2fs). Loss: %6.5f." %
+                        (index_iter + 1, max_iterations, train_time_avg,
+                            loss_avg))
                     writer.add_scalar("train/loss", loss_avg, index_iter + 1)
                     writer.add_scalar("train/learning_rate",
                                       self.optimizer.param_groups[0]['lr'],
@@ -327,12 +315,11 @@ class TrainTemplate:
                         num_samples=self.NUM_SAMPLES, watch_z_t=True)
                     end = time.time()
                     time_for_sampling = (end - start)
-                    if not self.silence:
-                        print_detailed_scores_and_sampling(
-                            detailed_scores, sample_eval)
+                    print_detailed_scores_and_sampling(
+                        detailed_scores, sample_eval)
 
-                        print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
-                              "{:.2f}".format((time_for_sampling)), ' sec')
+                    print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
+                          "{:.2f}".format((time_for_sampling)), ' sec')
                     if 'overfit_detected' in sample_eval.all_dict:
                         if sample_eval.all_dict['overfit_detected']:
                             print('model overfitting...')
@@ -348,7 +335,7 @@ class TrainTemplate:
                                               iteration=index_iter + 1)
 
                     # If model performed better on validation than any other iteration so far => save it and eventually replace old model
-                    check_if_best_than_saved(self.silence, last_save, eval_loss,
+                    check_if_best_than_saved(last_save, eval_loss,
                                              detailed_scores, best_save_dict,
                                              index_iter,
                                              self.get_checkpoint_filename,
@@ -361,20 +348,17 @@ class TrainTemplate:
                     save_train_model(index_iter + 1)
                     if last_save is not None and os.path.isfile(
                             last_save) and last_save != best_save_iter:
-                        if not self.silence:
-                            print("Removing checkpoint %s..." % last_save)
+                        print("Removing checkpoint %s..." % last_save)
                         os.remove(last_save)
                     last_save = self.get_checkpoint_filename(index_iter + 1)
                 index_iter += 1
                 keep_going = get_keep_going(time_per_step_list, index_iter)
             # End training loop
-            if not self.silence:
-                print('time to train ', np.sum(time_per_step_list))
+            print('time to train ', np.sum(time_per_step_list))
 
             # Testing the trained model
             test_NLL, detailed_scores = self.task.test()
-            if not self.silence:
-                print("=" * 50 + "\nTest performance: %lf" % (test_NLL))
+            print("=" * 50 + "\nTest performance: %lf" % (test_NLL))
             detailed_scores["original_NLL"] = test_NLL
             best_save_dict["test"] = detailed_scores
 

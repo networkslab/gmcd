@@ -1,6 +1,6 @@
 
 from tqdm import tqdm
-from src.mutils import append_in_dict, get_device
+from src.mutils import get_device
 from src.metrics import *
 import pickle as pk
 import torch
@@ -16,7 +16,7 @@ import math
 
 class TaskTemplate:
 
-    def __init__(self, model, run_config, name, load_data=True, debug=False, batch_size=64, drop_last=False, num_workers=None, silence=False):
+    def __init__(self, model, run_config, name, load_data=True, debug=False, batch_size=64, drop_last=False, num_workers=None):
         # Saving parameters
         self.name = name
         self.model = model
@@ -30,7 +30,6 @@ class TaskTemplate:
         self.val_dataset = None
         self.test_dataset = None
         self.train_epoch = 0
-        self.silence = silence
         # Load data if specified, and create data loaders
         if load_data:
             self._load_datasets()
@@ -95,8 +94,7 @@ class TaskTemplate:
 
         self.frac_val_seen = get_frac_overlap(
             self.training_dict, self.test_dict)
-        if not self.silence:
-            print('frac test in train', self.frac_val_seen)
+
         print('frac test in train', self.frac_val_seen)
 
     def data_to_dict(self, np_data):
@@ -154,53 +152,23 @@ class TaskTemplate:
         return self._train_batch(batch, iteration=iteration)
 
     def sample(self, num_samples, watch_z_t):
-        S = self.model.S
-        if self.run_config.model == 'CNF':
-            z_in = None
-            z_length = None
-            hidden_size = self.model.encoding_dim
-            max_size_sample = self.max_samples  # ran out of mem otherwise?
-            num_samples_total = 0
-            samples_list = []
+        max_size_sample = self.max_samples  # ran out of mem otherwise?
+        num_samples_total = 0
+        samples_list = []
+        for _ in range(math.ceil(num_samples/max_size_sample)):
+            if num_samples_total+max_size_sample > num_samples:
+                batch_num_samples = num_samples - num_samples_total
+            else:
 
-            for _ in range(math.ceil(num_samples/max_size_sample)):
-                if num_samples_total+max_size_sample > num_samples:
-                    batch_num_samples = num_samples - num_samples_total
-                else:
-
-                    batch_num_samples = max_size_sample
-                num_samples_total += batch_num_samples
-                z_in = self.prior_distribution.sample(shape=(batch_num_samples,
-                                                             S,
-                                                             hidden_size))
-                batch = self._preprocess_batch(z_in)
-                z_in, z_length, _ = TaskTemplate.batch_to_device(batch)
-                samples = self.model.sample(num_samples=batch_num_samples,
-                                            z_in=z_in,
-                                            length=z_length,
-                                            watch_z_t=watch_z_t)
-                samples_list.append(samples['x'].cpu().detach().numpy())
-
-            samples = np.array(samples_list)
-            samples = samples.reshape(-1, samples.shape[2])
-        else:
-            max_size_sample = self.max_samples  # ran out of mem otherwise?
-            num_samples_total = 0
-            samples_list = []
-            for _ in range(math.ceil(num_samples/max_size_sample)):
-                if num_samples_total+max_size_sample > num_samples:
-                    batch_num_samples = num_samples - num_samples_total
-                else:
-
-                    batch_num_samples = max_size_sample
-                num_samples_total += batch_num_samples
-                samples = self.model.sample(num_samples=batch_num_samples,
-                                            z_in=None,
-                                            length=None,
-                                            watch_z_t=watch_z_t)
-                samples_list.append(samples['x'].cpu().detach().numpy())
-            samples = np.array(samples_list)
-            samples = samples.reshape(-1, samples.shape[2])
+                batch_num_samples = max_size_sample
+            num_samples_total += batch_num_samples
+            samples = self.model.sample(num_samples=batch_num_samples,
+                                        z_in=None,
+                                        length=None,
+                                        watch_z_t=watch_z_t)
+            samples_list.append(samples['x'].cpu().detach().numpy())
+        samples = np.array(samples_list)
+        samples = samples.reshape(-1, samples.shape[2])
 
         return samples
 
@@ -281,9 +249,8 @@ class TaskTemplate:
 
         self.model.train()
         eval_time = int(time.time() - start_time)
-        if not self.silence:
-            print("Finished %s with bpd of %4.3f, (%imin %is)" % ("testing" if data_loader ==
-                  self.test_data_loader else "evaluation", detailed_metrics["bpd"], eval_time/60, eval_time % 60))
+        print("Finished %s with bpd of %4.3f, (%imin %is)" % ("testing" if data_loader ==
+                                                              self.test_data_loader else "evaluation", detailed_metrics["bpd"], eval_time/60, eval_time % 60))
         torch.cuda.empty_cache()
 
         if "loss_metric" in detailed_metrics:
@@ -346,31 +313,16 @@ class TaskTemplate:
 
     def _eval_batch(self, batch, is_test=False):
         x_in, x_length, x_channel_mask = self._preprocess_batch(batch)
-        if self.run_config.model == 'CNF':
-            z, ldj = self.model(x_in,
-                                reverse=False,
-                                get_ldj_per_layer=False,
-                                beta=1,
-                                length=x_length)
-            neglog_prob = -(self.prior_distribution.log_prob(z) *
-                            x_channel_mask).sum(dim=[1, 2])
+        ldj = self.model(x_in,
+                         reverse=False,
+                         get_ldj_per_layer=False,
+                         beta=1,
+                         length=x_length)
 
-            neg_ldj = -ldj
+        loss = -(ldj / x_length.float()).mean()
+        std_loss = (ldj / x_length.float()).std()
 
-            loss, _, _ = self._calc_loss(neg_ldj, neglog_prob, x_length)
-
-            return {'nll': loss}
-        else:
-            ldj = self.model(x_in,
-                             reverse=False,
-                             get_ldj_per_layer=False,
-                             beta=1,
-                             length=x_length)
-
-            loss = -(ldj / x_length.float()).mean()
-            std_loss = (ldj / x_length.float()).std()
-
-            return {'nll': loss, 'std_nll': std_loss}
+        return {'nll': loss, 'std_nll': std_loss}
 
     @staticmethod
     def batch_to_device(batch):

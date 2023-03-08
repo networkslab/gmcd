@@ -5,14 +5,13 @@ import sys
 import numpy as np
 from functools import partial
 from src.model.apple_wraping import get_mean_wrapper
-sys.path.append("../../../")
+# sys.path.append("../../../")
 
 
 class ExtActFixed(nn.Module):
     def __init__(self,
                  d,
                  K,
-                 silence,
                  not_doing=False,
                  var_coef=1,
                  data_init=False):
@@ -20,7 +19,6 @@ class ExtActFixed(nn.Module):
         self.d = d
         self.data_init = data_init
         self.K = K
-        self.silence = silence
         self.var_coef = var_coef
         self.not_doing = not_doing
         self.compute_mean_var()
@@ -29,11 +27,11 @@ class ExtActFixed(nn.Module):
             self.bias_scale_matrix, freeze=True)
 
     def compute_mean_var(self):
-        mean, min_dist = get_mean_wrapper(K=self.K, d=self.d, not_doing=self.not_doing)
+        mean, min_dist = get_mean_wrapper(
+            K=self.K, d=self.d, not_doing=self.not_doing)
         var = min_dist/(self.var_coef*2*self.K*3**(1/self.d))
-        if not self.silence:
-            print('min_dist : ', min_dist, ' var val : ', var)
-        
+        print('min_dist : ', min_dist, ' var val : ', var)
+
         var = np.full((self.K, self.d), var)
         scale = np.log(var)
         bias = mean * np.exp(-scale)

@@ -31,26 +31,11 @@ class RunConfig():
         self.transformer_local_size = 64
         self.transformer_reversible = False
         self.diffusion_steps = T
-
-        self.causal = False
         self.alpha = 1.1
 
     # config that are linked to other config, to be called if we change some values
 
     def set_dependent_config(self):
-        if self.encoding_dim is not None:
-            flow_config = None
-            if not self.fixed:  # if the encoding is not fixed, we can use a flow to learn it.
-                flow_config = {
-                    "num_flows": self.encoding_num_flows,
-                    "hidden_layers": self.encoding_hidden_layers,
-                    "hidden_size": self.encoding_hidden_size
-                }
-            self.flow_config = flow_config
-            self.fixed = self.fixed
-
-            # CategoricalEncodingConfig(
-            #     self.fixed, self.encoding_dim, flow_config)
         self.set_seed()
 
     def set_seed(self):
@@ -65,7 +50,7 @@ class RunConfig():
         torch.backends.cudnn.benchmark = False
 
     def get_description(self):
-        description = self.model + '_encod_' + str(
+        description = '_encod_' + str(
             self.encoding_dim) + '_lr_' + str(self.learning_rate)
         fcdm_description = self.fcdmconfig.get_description()
         description = description + '_' + fcdm_description

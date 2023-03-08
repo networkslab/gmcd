@@ -33,7 +33,7 @@ class Rezero(torch.nn.Module):
 
 
 class LinearAttentionTransformerEmbedding(nn.Module):
-    def __init__(self, input_dim, output_dim, dim_emb, dim, depth, n_blocks, max_seq_len, num_timesteps, heads=8, dim_head=None, causal=True, one_kv_head=False, reversible=False, ff_chunks=1, ff_glu=False, ff_dropout=0., attn_layer_dropout=0., attn_dropout=0., blindspot_size=1, n_local_attn_heads=0, local_attn_window_size=128, return_embeddings=False, receives_context=False, pkm_layers=tuple(), pkm_num_keys=128, attend_axially=False, linformer_settings=None, context_linformer_settings=None):
+    def __init__(self, input_dim, output_dim, dim_emb, dim, depth, n_blocks, max_seq_len, num_timesteps, heads=8, dim_head=None,  reversible=False, ff_chunks=1, ff_glu=False, ff_dropout=0., attn_layer_dropout=0., attn_dropout=0., blindspot_size=1, n_local_attn_heads=0, local_attn_window_size=128, return_embeddings=False, receives_context=False, pkm_layers=tuple(), pkm_num_keys=128, attend_axially=False, linformer_settings=None, context_linformer_settings=None):
         local_attn_window_size = max_seq_len
         assert (max_seq_len % local_attn_window_size) == 0, 'max sequence length must be divisible by the window size, to calculate number of kmeans cluster'
         super().__init__()
@@ -67,7 +67,7 @@ class LinearAttentionTransformerEmbedding(nn.Module):
                 self.transformer_blocks[-1].append(
                     LinearAttentionTransformer(
                         dim, 1, max_seq_len, heads=heads, dim_head=dim_head,
-                        causal=causal,
+                        causal=False,
                         ff_chunks=ff_chunks, ff_glu=ff_glu,
                         ff_dropout=ff_dropout,
                         attn_layer_dropout=attn_layer_dropout,
@@ -117,7 +117,6 @@ class DenoisingTransformer(torch.nn.Module):
             n_blocks=diffusion_params.transformer_blocks,
             max_seq_len=S,
             num_timesteps=diffusion_params.diffusion_steps,
-            causal=diffusion_params.causal,  # auto-regressive or not
             ff_dropout=0,  # dropout for feedforward
             attn_layer_dropout=diffusion_params.input_dp_rate,
             # dropout right after self-attention layer

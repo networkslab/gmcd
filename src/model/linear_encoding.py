@@ -1,17 +1,7 @@
-
-# from layers.networks.help_layers import SimpleLinearLayer, LinearNet
-# from layers.categorical_encoding.distributions import GaussianDistribution, LogisticDistribution
-# from layers.cnf.coupling_layer import CouplingLayer
-# from layers.categorical_encoding.activation_fixed import ExtActFixed
-# from layers.cnf.act_flow.activation_norm_flow import ExtActNormFlow
-# from layers.cnf.permutation_layers import InvertibleConv
-# from layers.cnf.flow_layer import FlowLayer
-# from general.mutils import one_hot
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as D
-
 from src.metrics import one_hot
 from src.model.activation_fixed import ExtActFixed
 from src.model.distributions import GaussianDistribution
@@ -24,31 +14,17 @@ class LinearCategoricalEncoding(nn.Module):
 
     def __init__(self,
                  run_config,
-                 dataset_class=None,
-                 S_vector=None,
-                 K=-1,
-                 default_embed_layer_dims=16,
-                 silence=False):
+                 dataset_class,
+                 K):
         super().__init__()
         self.dataset_class = dataset_class
-        self.fixed = run_config.fixed
         self.encoding_dim = run_config.encoding_dim
-        self.var_coef = run_config.var_coef
-        self.not_doing = run_config.not_doing
         self.K = K
-        self.silence = silence
-        embed_dims = None
         self.prior_distribution = GaussianDistribution(
-                mu=0.0, sigma=1.0)  # Prior distribution used for sampling
-        self.encoder_layers = _create_encoder(encoding_dim=self.encoding_dim,
-                                              K=self.K,
-                                              embed_dims=embed_dims,
-                                              flow_config=run_config.flow_config,
-                                              fixed=self.fixed,
-                                              silence=self.silence,
-                                              var_coef=self.var_coef,
-                                              not_doing=self.not_doing)
-        self.fixed_encoder = self.encoder_layers[0]
+            mu=0.0, sigma=1.0)  # Prior distribution used for sampling
+        self.fixed_encoder = ExtActFixed(d=self.encoding_dim, K=K)
+        self.encoder_layers = nn.ModuleList([self.fixed_encoder])
+
         # Uniform prior over the categories.
         category_prior = torch.zeros(self.K,
                                      dtype=torch.float32)
@@ -107,7 +83,6 @@ class LinearCategoricalEncoding(nn.Module):
             z_cont = z_cont * channel_padding_mask
             z_out = z_cont
 
-            
         else:
             # z is of shape [Batch * seq_len, 1, D]
             assert z.size(
@@ -229,24 +204,3 @@ class LinearCategoricalEncoding(nn.Module):
                 logits=log_prob_denominator)
             x = p_x_given_z.sample()
             return x
-
-
-# def create_embed_layer(vocab, vocab_size, default_embed_layer_dims):
-#     # Creating an embedding layer either from a torchtext vocabulary or from scratch
-#     use_vocab_vectors = (vocab is not None and vocab.vectors is not None)
-#     embed_layer_dims = vocab.vectors.shape[1] if use_vocab_vectors else default_embed_layer_dims
-#     vocab_size = len(vocab) if use_vocab_vectors else vocab_size
-#     embed_layer = nn.Embedding(vocab_size, embed_layer_dims)
-#     if use_vocab_vectors:
-#         embed_layer.weight.data.copy_(vocab.vectors)
-#         embed_layer.weight.requires_grad = True
-#     return embed_layer, vocab_size
-
-
-def _create_encoder(encoding_dim, K, embed_dims, flow_config, fixed, silence, var_coef, not_doing):
-    flow_layers = [
-        ExtActFixed(d=encoding_dim, K=K,
-                    silence=silence, not_doing=not_doing, var_coef=var_coef)
-    ]
-
-    return nn.ModuleList(flow_layers)

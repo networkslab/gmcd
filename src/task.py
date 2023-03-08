@@ -1,4 +1,4 @@
-from optimizer.Scheduler import ExponentialScheduler
+from src.optimizer.Scheduler import ExponentialScheduler
 from src.datasets.synthetic import SyntheticDataset
 from src.metrics import generalization_metric, get_diff_metric, get_exact_metrics
 from src.sample_output import SamplesEvaluation
@@ -12,15 +12,13 @@ class TaskSyntheticModeling(TaskTemplate):
                  run_config,
                  load_data=True,
                  debug=False,
-                 batch_size=64,
-                 silence=False):
+                 batch_size=64):
         super().__init__(model,
                          run_config,
                          load_data=load_data,
                          debug=debug,
                          batch_size=batch_size,
-                         name="TaskSyntheticModeling",
-                         silence=silence)
+                         name="TaskSyntheticModeling")
         self.beta_scheduler = self.create_scheduler(self.run_config)
 
         self.summary_dict = {
@@ -45,8 +43,7 @@ class TaskSyntheticModeling(TaskTemplate):
         dataset_name = self.run_config.dataset
         dataset_class, dataset_kwargs = TaskSyntheticModeling.get_dataset_class(
             dataset_name, return_kwargs=True)
-        if not self.silence:
-            print("Loading dataset %s..." % dataset_name)
+        print("Loading dataset %s..." % dataset_name)
 
         self.train_dataset = dataset_class(S=self.S, K=self.K,
                                            train=True,

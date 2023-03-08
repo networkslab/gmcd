@@ -9,7 +9,6 @@ from glob import glob
 PARAM_CONFIG_FILE = "param_config.pik"
 
 
-
 class Tracker:
 
     def __init__(self, exp_decay=1.0):
@@ -163,7 +162,7 @@ def write_dict_to_tensorboard(writer, val_dict, base_name, iteration):
             continue
         elif isinstance(val, (int, float)):
             writer.add_scalar(base_name + "/" + name, val, iteration)
-       
+
 
 def get_device():
 

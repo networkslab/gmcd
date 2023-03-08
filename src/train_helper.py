@@ -1,5 +1,4 @@
 
-import torch
 import datetime
 import os
 import pickle as pk
@@ -37,13 +36,12 @@ def prepare_checkpoint(checkpoint_path, name_prefix):
     return checkpoint_path, figure_path
 
 
-def check_params(model, silence=False):
+def check_params(model):
     pytorch_total_params = sum(p.numel() for p in model.parameters()
                                if p.requires_grad)
 
-    if not silence:
-        print('Total number of trainable parameters', pytorch_total_params)
-        print()
+    print('Total number of trainable parameters', pytorch_total_params)
+    print()
 
 
 # Function to export the current results to a txt file
@@ -94,7 +92,7 @@ def print_detailed_scores_and_sampling(detailed_scores, sample_eval):
     print()
 
 
-def check_if_best_than_saved(silence, last_save, eval_NLL, detailed_scores,
+def check_if_best_than_saved(last_save, eval_NLL, detailed_scores,
                              best_save_dict, index_iter,
                              get_checkpoint_filename, checkpoint_path, evaluation_dict, save_train_model):
     # If model performed better on validation than any other iteration so far => save it and eventually replace old model
@@ -103,16 +101,13 @@ def check_if_best_than_saved(silence, last_save, eval_NLL, detailed_scores,
         best_save_dict["metric"] = eval_NLL
         best_save_dict["detailed_metrics"] = detailed_scores
         if not os.path.isfile(best_save_iter):
-            if not silence:
-                print("Saving model at iteration " + str(index_iter + 1))
+            print("Saving model at iteration " + str(index_iter + 1))
             if best_save_dict["file"] is not None and os.path.isfile(
                     best_save_dict["file"]):
-                if not silence:
-                    print("Removing checkpoint %s..." % best_save_dict["file"])
+                print("Removing checkpoint %s..." % best_save_dict["file"])
                 os.remove(best_save_dict["file"])
             if last_save is not None and os.path.isfile(last_save):
-                if not silence:
-                    print("Removing checkpoint %s..." % last_save)
+                print("Removing checkpoint %s..." % last_save)
                 os.remove(last_save)
             best_save_dict["file"] = best_save_iter
             last_save = best_save_iter
@@ -121,10 +116,7 @@ def check_if_best_than_saved(silence, last_save, eval_NLL, detailed_scores,
     evaluation_dict[index_iter + 1] = best_save_dict["metric"]
 
 
-def model_param_to_name(model_params):
-    return model_params.model
 
-# Statement for detecting NaN values
 
 
 def get_sampling_stat_if_not_too_long(time_for_sampling, train_time_avg, loss_freq, evaluate_sample, NUM_SAMPLES, overide=False):

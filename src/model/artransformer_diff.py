@@ -18,7 +18,6 @@ class ArTransformerDiffusion(GaussianDiffusion):
             T,
             extActFixed,
             posterior_sample_fun=None,
-            silence=True,
             figure_path=""):
         super().__init__(
             sequence_length=S,
@@ -28,7 +27,7 @@ class ArTransformerDiffusion(GaussianDiffusion):
             betas=get_named_beta_schedule('cosine', T),
             model_mean_type=ModelMeanType.EPSILON,
             model_var_type=ModelVarType.FIXED_LARGE,
-            rescale_timesteps=False, silence=silence, figure_path=figure_path)
+            rescale_timesteps=False,  figure_path=figure_path)
 
         self.extActFixed = extActFixed
         K = extActFixed.fixed_embedding.num_embeddings

@@ -9,7 +9,7 @@ class SyntheticRunConfig(RunConfig):
                  encoding_dim=3,
                  max_iterations=1000,
                  T=10) -> None:
-        super().__init__(encoding_dim, max_iterations, T)
+        super().__init__(max_iterations, T)
         self.S = S  # Number of elements in the sets.
         self.K = K
         self.encoding_dim = encoding_dim

@@ -31,7 +31,7 @@ look_sample_process
         betas,
         model_mean_type,
         model_var_type,
-        rescale_timesteps=False, silence=True,
+        rescale_timesteps=False,
             figure_path=""
     ):
         super().__init__()
@@ -41,7 +41,6 @@ look_sample_process
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
         self.rescale_timesteps = rescale_timesteps
-        self.silence = silence
         self.figure_path = figure_path
         # Use float64 for accuracy.
         betas = np.array(betas, dtype=np.float64)

@@ -26,17 +26,16 @@ class TrainSyntheticModeling(TrainTemplate):
     def _create_model(self, runconfig, figure_path):
         dataset_name = self.runconfig.dataset
         dataset_class = TaskSyntheticModeling.get_dataset_class(dataset_name)
-        model = GMCD(run_config=runconfig, dataset_class=dataset_class,
-                     silence=self.silence, figure_path=figure_path)
+        model = GMCD(run_config=runconfig,
+                     dataset_class=dataset_class, figure_path=figure_path)
 
         return model
 
-    def _create_task(self, runconfig, debug=False, silence=False):
+    def _create_task(self, runconfig, debug=False):
         task = TaskSyntheticModeling(self.model,
                                      runconfig,
                                      debug=debug,
-                                     batch_size=self.batch_size,
-                                     silence=silence)
+                                     batch_size=self.batch_size)
         return task
 
 
@@ -50,10 +49,8 @@ def start_training(runconfig,
                                          checkpoint_path=runconfig.checkpoint_path,
                                          path_experiment=store_ckpt)
 
-    
-      
     args_filename = os.path.join(trainModule.checkpoint_path,
-                                    PARAM_CONFIG_FILE)
+                                 PARAM_CONFIG_FILE)
     with open(args_filename, "wb") as f:
         pk.dump(runconfig, f)
 
@@ -64,12 +61,9 @@ def start_training(runconfig,
         loss_freq=50,
         eval_freq=runconfig.eval_freq,
         save_freq=runconfig.save_freq,
-        no_model_checkpoints=runconfig.no_model_checkpoints,
-        max_train_time=runconfig.max_train_time)
+        no_model_checkpoints=runconfig.no_model_checkpoints)
 
     # Cleaning up the checkpoint directory afterwards if selected
 
     if return_result:
         return result
-
-   

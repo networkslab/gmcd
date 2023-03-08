@@ -5,7 +5,7 @@ from src.model.artransformer_diff import ArTransformerDiffusion
  
 
 class GMCD(nn.Module):
-    def __init__(self,  run_config, dataset_class, silence, name="GMCD", figure_path=""):
+    def __init__(self,  run_config, dataset_class, name="GMCD", figure_path=""):
         super().__init__()
         self.figure_path = figure_path
         self.name = name
@@ -13,17 +13,14 @@ class GMCD(nn.Module):
         self.dataset_class = dataset_class
         self.S = self.run_config.S
         self.K = self.run_config.K
-        self.silence = silence
         self.encoding_dim = self.run_config.encoding_dim
-        self.linear_encoding_layer = LinearCategoricalEncoding(self.run_config, dataset_class=self.dataset_class,
-                                                               K=self.K, silence=self.silence)
+        self.linear_encoding_layer = LinearCategoricalEncoding(self.run_config, dataset_class=self.dataset_class, K=self.K)
         fixed_encoder = self.linear_encoding_layer.fixed_encoder
         T = int(self.run_config.T)
 
         posterior_sample_fun = self.linear_encoding_layer._posterior_sample
         self.z_0_layer = ArTransformerDiffusion(self.run_config, self.S, self.encoding_dim, T, fixed_encoder,
                                                 posterior_sample_fun=posterior_sample_fun,
-                                                silence=silence,
                                                 figure_path=figure_path)
 
     def sample(self, num_samples, watch_z_t=False, **kwargs):
