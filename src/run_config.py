@@ -7,9 +7,7 @@ Default config. Will usually be overriden by a task specific config class.
 
 
 class RunConfig():
-    def __init__(self,
-                 max_iterations=10000,
-                 T=10) -> None:
+    def __init__(self) -> None:
         self.set_boring_config()
 
         self.seed = 3  # 0
@@ -20,9 +18,7 @@ class RunConfig():
         self.batch_size = 1024  # Batch size
         self.learning_rate = 7.5e-4  # Learning rate of the optimizer
         self.scale_loss = 1e-4
-        self.max_iterations = max_iterations
         self.diffusion_model = 'transformer'
-        self.T = T
         self.input_dp_rate = 0.2
         self.transformer_heads = 8
         self.transformer_depth = 2
@@ -30,7 +26,6 @@ class RunConfig():
         self.transformer_local_heads = 4
         self.transformer_local_size = 64
         self.transformer_reversible = False
-        self.diffusion_steps = T
         self.alpha = 1.1
 
     # config that are linked to other config, to be called if we change some values

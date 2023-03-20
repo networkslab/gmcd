@@ -9,10 +9,10 @@ dataset = 'sort'
 def train(set_size, dataset):
 
     run_config = SyntheticRunConfig(dataset=dataset, S=set_size)
-    start_training(run_config)
+    return start_training(run_config, return_result=True)
 
 
 # This will train and store the model.
-train(set_size=S,   dataset=dataset)
+result = train(set_size=S,   dataset=dataset)
 
-# This will evaluate the model and print the result.
+print(result)

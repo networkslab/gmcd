@@ -221,162 +221,147 @@ class TrainTemplate:
         time_per_step = Tracker()
         time_per_step_list = []
         train_losses = Tracker()
-        # Try-catch if user terminates
-        try:
+        
 
-            self.model.eval()
-            self.task.initialize()
-            print("=" * 50 + "\nStarting training...\n" + "=" * 50)
+        self.model.eval()
+        self.task.initialize()
+        print("=" * 50 + "\nStarting training...\n" + "=" * 50)
 
-            print("Performing initial evaluation...")
+        print("Performing initial evaluation...")
 
-            eval_loss, detailed_scores = self.task.eval(initial_eval=True)
-            start = time.time()
+        eval_loss, detailed_scores = self.task.eval(initial_eval=True)
+        start = time.time()
 
-            # self.task.check_dead_zone('start_training_')
+        # self.task.check_dead_zone('start_training_')
 
-            sample_eval = self.task.evaluate_sample(num_samples=self.NUM_SAMPLES,
-                                                    watch_z_t=False)
-            end = time.time()
-            time_for_sampling = (end - start)
+        sample_eval = self.task.evaluate_sample(num_samples=self.NUM_SAMPLES,
+                                                watch_z_t=False)
+        end = time.time()
+        time_for_sampling = (end - start)
 
-            print_detailed_scores_and_sampling(detailed_scores,
-                                               sample_eval)
-            print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
-                  "{:.2f}".format((time_for_sampling)), ' sec')
+        print_detailed_scores_and_sampling(detailed_scores,
+                                            sample_eval)
+        print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
+                "{:.2f}".format((time_for_sampling)), ' sec')
 
-            self.model.train()
-            detailed_scores_to_tensorboard = {}
-            detailed_scores_to_tensorboard.update(
-                sample_eval.get_printable_metrics_dict())
-            detailed_scores_to_tensorboard.update(detailed_scores)
-            write_dict_to_tensorboard(writer,
-                                      detailed_scores_to_tensorboard,
-                                      base_name="eval",
-                                      iteration=start_iter)
+        self.model.train()
+        detailed_scores_to_tensorboard = {}
+        detailed_scores_to_tensorboard.update(
+            sample_eval.get_printable_metrics_dict())
+        detailed_scores_to_tensorboard.update(detailed_scores)
+        write_dict_to_tensorboard(writer,
+                                    detailed_scores_to_tensorboard,
+                                    base_name="eval",
+                                    iteration=start_iter)
 
-           
-            index_iter = start_iter
-            keep_going = True
-            self.loss_prev = None
-            while keep_going:
+        
+        index_iter = start_iter
+        keep_going = True
+        self.loss_prev = None
+        while keep_going:
 
-                # Training step
-                start_time = time.time()
-                loss = self.task.train_step(iteration=index_iter)
+            # Training step
+            start_time = time.time()
+            loss = self.task.train_step(iteration=index_iter)
 
-                self.optimizer.zero_grad()
-                loss.backward()
+            self.optimizer.zero_grad()
+            loss.backward()
 
-                torch.nn.utils.clip_grad_norm_(parameters_to_optimize,
-                                               max_gradient_norm)
-                self.optimizer.step()
-                if self.optimizer.param_groups[0]['lr'] > self.lr_minimum:
-                    self.lr_scheduler.step()
-                end_time = time.time()
+            torch.nn.utils.clip_grad_norm_(parameters_to_optimize,
+                                            max_gradient_norm)
+            self.optimizer.step()
+            if self.optimizer.param_groups[0]['lr'] > self.lr_minimum:
+                self.lr_scheduler.step()
+            end_time = time.time()
 
-                time_per_step.add(end_time - start_time)
-                time_per_step_list.append(end_time - start_time)
-                train_losses.add(loss.item())
+            time_per_step.add(end_time - start_time)
+            time_per_step_list.append(end_time - start_time)
+            train_losses.add(loss.item())
 
-                if (index_iter + 1) % loss_freq == 0:
+            if (index_iter + 1) % loss_freq == 0:
 
-                    loss_avg = train_losses.get_mean(reset=True)
-                    self.loss_prev = loss_avg
-                    train_time_avg = time_per_step.get_mean(reset=True)
-                    print(
-                        "Training iteration %i|%i (%4.2fs). Loss: %6.5f." %
-                        (index_iter + 1, max_iterations, train_time_avg,
-                            loss_avg))
-                    writer.add_scalar("train/loss", loss_avg, index_iter + 1)
-                    writer.add_scalar("train/learning_rate",
-                                      self.optimizer.param_groups[0]['lr'],
-                                      index_iter + 1)
-                    writer.add_scalar("train/training_time", train_time_avg,
-                                      index_iter + 1)
-
-                    self.task.add_summary(writer,
-                                          index_iter + 1,
-                                          checkpoint_path=self.checkpoint_path)
-
-                # Performing evaluation every "eval_freq" steps
-                if (index_iter + 1) % eval_freq == 0:
-                    self.model.eval()
-
-                    eval_loss, detailed_scores = self.task.eval()
-                    start = time.time()
-                    sample_eval = self.task.evaluate_sample(
-                        num_samples=self.NUM_SAMPLES, watch_z_t=True)
-                    end = time.time()
-                    time_for_sampling = (end - start)
-                    print_detailed_scores_and_sampling(
-                        detailed_scores, sample_eval)
-
-                    print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
-                          "{:.2f}".format((time_for_sampling)), ' sec')
-                    if 'overfit_detected' in sample_eval.all_dict:
-                        if sample_eval.all_dict['overfit_detected']:
-                            print('model overfitting...')
-                            keep_going = False
-                    self.model.train()
-                    detailed_scores_to_tensorboard = {}
-                    detailed_scores_to_tensorboard.update(
-                        sample_eval.get_printable_metrics_dict())
-                    detailed_scores_to_tensorboard.update(detailed_scores)
-                    write_dict_to_tensorboard(writer,
-                                              detailed_scores_to_tensorboard,
-                                              base_name="eval",
-                                              iteration=index_iter + 1)
-
-                    # If model performed better on validation than any other iteration so far => save it and eventually replace old model
-                    check_if_best_than_saved(last_save, eval_loss,
-                                             detailed_scores, best_save_dict,
-                                             index_iter,
-                                             self.get_checkpoint_filename,
-                                             self.checkpoint_path,
-                                             evaluation_dict, save_train_model)
-
-                # Independent of evaluation, the model is saved every "save_freq" steps. This prevents loss of information if model does not improve for a while
-                if (index_iter + 1) % save_freq == 0 and not os.path.isfile(
-                        self.get_checkpoint_filename(index_iter + 1)):
-                    save_train_model(index_iter + 1)
-                    if last_save is not None and os.path.isfile(
-                            last_save) and last_save != best_save_iter:
-                        print("Removing checkpoint %s..." % last_save)
-                        os.remove(last_save)
-                    last_save = self.get_checkpoint_filename(index_iter + 1)
-                index_iter += 1
-                keep_going = not index_iter == int(max_iterations)
-            # End training loop
-            print('time to train ', np.sum(time_per_step_list))
-
-            # Testing the trained model
-            test_NLL, detailed_scores = self.task.test()
-            print("=" * 50 + "\nTest performance: %lf" % (test_NLL))
-            detailed_scores["original_NLL"] = test_NLL
-            best_save_dict["test"] = detailed_scores
-
-            sample_eval = self.task.evaluate_sample(num_samples=10 *
-                                                    self.NUM_SAMPLES,
-                                                    watch_z_t=True)
-
-            detailed_scores.update(sample_eval.get_all_metrics_dict())
-
-        # If user terminates training early, replace last model saved per "save_freq" steps by current one
-        except KeyboardInterrupt:
-            if index_iter > 0:
+                loss_avg = train_losses.get_mean(reset=True)
+                self.loss_prev = loss_avg
+                train_time_avg = time_per_step.get_mean(reset=True)
                 print(
-                    "User keyboard interrupt detected. Saving model at step %i..."
-                    % (index_iter))
+                    "Training iteration %i|%i (%4.2fs). Loss: %6.5f." %
+                    (index_iter + 1, max_iterations, train_time_avg,
+                        loss_avg))
+                writer.add_scalar("train/loss", loss_avg, index_iter + 1)
+                writer.add_scalar("train/learning_rate",
+                                    self.optimizer.param_groups[0]['lr'],
+                                    index_iter + 1)
+                writer.add_scalar("train/training_time", train_time_avg,
+                                    index_iter + 1)
+
+                self.task.add_summary(writer,
+                                        index_iter + 1,
+                                        checkpoint_path=self.checkpoint_path)
+
+            # Performing evaluation every "eval_freq" steps
+            if (index_iter + 1) % eval_freq == 0:
+                self.model.eval()
+
+                eval_loss, detailed_scores = self.task.eval()
+                start = time.time()
+                sample_eval = self.task.evaluate_sample(
+                    num_samples=self.NUM_SAMPLES, watch_z_t=True)
+                end = time.time()
+                time_for_sampling = (end - start)
+                print_detailed_scores_and_sampling(
+                    detailed_scores, sample_eval)
+
+                print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
+                        "{:.2f}".format((time_for_sampling)), ' sec')
+                if 'overfit_detected' in sample_eval.all_dict:
+                    if sample_eval.all_dict['overfit_detected']:
+                        print('model overfitting...')
+                        keep_going = False
+                self.model.train()
+                detailed_scores_to_tensorboard = {}
+                detailed_scores_to_tensorboard.update(
+                    sample_eval.get_printable_metrics_dict())
+                detailed_scores_to_tensorboard.update(detailed_scores)
+                write_dict_to_tensorboard(writer,
+                                            detailed_scores_to_tensorboard,
+                                            base_name="eval",
+                                            iteration=index_iter + 1)
+
+                # If model performed better on validation than any other iteration so far => save it and eventually replace old model
+                check_if_best_than_saved(last_save, eval_loss,
+                                            detailed_scores, best_save_dict,
+                                            index_iter,
+                                            self.get_checkpoint_filename,
+                                            self.checkpoint_path,
+                                            evaluation_dict, save_train_model)
+
+            # Independent of evaluation, the model is saved every "save_freq" steps. This prevents loss of information if model does not improve for a while
+            if (index_iter + 1) % save_freq == 0 and not os.path.isfile(
+                    self.get_checkpoint_filename(index_iter + 1)):
                 save_train_model(index_iter + 1)
-            else:
-                print(
-                    "User keyboard interrupt detected before starting to train."
-                )
-            if last_save is not None and os.path.isfile(last_save) and not any(
-                    [val == last_save for _, val in best_save_dict.items()]):
-                os.remove(last_save)
+                if last_save is not None and os.path.isfile(
+                        last_save) and last_save != best_save_iter:
+                    print("Removing checkpoint %s..." % last_save)
+                    os.remove(last_save)
+                last_save = self.get_checkpoint_filename(index_iter + 1)
+            index_iter += 1
+            keep_going = not index_iter == int(max_iterations)
+        # End training loop
+        print('time to train ', np.sum(time_per_step_list))
 
+        # Testing the trained model
+        test_NLL, detailed_scores = self.task.test()
+        print("=" * 50 + "\nTest performance: %lf" % (test_NLL))
+        detailed_scores["original_NLL"] = test_NLL
+        best_save_dict["test"] = detailed_scores
+
+        sample_eval = self.task.evaluate_sample(num_samples=10 *
+                                                self.NUM_SAMPLES,
+                                                watch_z_t=True)
+
+        detailed_scores.update(sample_eval.get_all_metrics_dict())
+
+       
         export_result_txt(best_save_iter, best_save_dict, self.checkpoint_path)
         writer.close()
         return detailed_scores

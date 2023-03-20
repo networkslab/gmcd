@@ -4,23 +4,20 @@ from src.run_config import RunConfig
 class SyntheticRunConfig(RunConfig):
     def __init__(self,
                  dataset,
-                 S,
-                 K=None,  # by default, K=S
-                 encoding_dim=3,
-                 max_iterations=1000,
-                 T=10) -> None:
-        super().__init__(max_iterations, T)
+                 S) -> None:
+        super().__init__()
         self.S = S  # Number of elements in the sets.
-        self.K = K
-        self.encoding_dim = encoding_dim
+        self.K = S
+       
         self.eval_freq = 500
         self.dataset = dataset
 
-        if self.K is not None:
-            self.dataset = "synthetic_high_K"
-        else:
-            self.K = self.S
-
-        self.transformer_dim = 64
-
+        if self.K == 6:
+            self.T = 10
+            self.diffusion_steps = self.T
+            self.batch_size = 1024
+            self.encoding_dim = 6
+            self.max_iterations = 1000
+            self.transformer_dim = 64
+        
         super().set_dependent_config()
