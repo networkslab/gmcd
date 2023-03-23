@@ -60,8 +60,7 @@ def start_training(runconfig,
         runconfig.max_iterations,
         loss_freq=50,
         eval_freq=runconfig.eval_freq,
-        save_freq=runconfig.save_freq,
-        no_model_checkpoints=runconfig.no_model_checkpoints)
+        save_freq=runconfig.save_freq)
 
     # Cleaning up the checkpoint directory afterwards if selected
 

@@ -95,7 +95,6 @@ class TaskTemplate:
         self.frac_val_seen = get_frac_overlap(
             self.training_dict, self.test_dict)
 
-        print('frac test in train', self.frac_val_seen)
 
     def data_to_dict(self, np_data):
         dict_data = {}
@@ -181,9 +180,9 @@ class TaskTemplate:
             self.training_dict, samples_dict)
         return frac_seen_samples, r20_corr_abs
 
-    def evaluate_sample(self, num_samples, watch_z_t):
+    def evaluate_sample(self, num_samples):
 
-        samples = self.sample(num_samples, watch_z_t)
+        samples = self.sample(num_samples)
 
         return self.get_sample_eval(samples)
 

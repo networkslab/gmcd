@@ -1,11 +1,9 @@
 
 import torch
 import torch.nn as nn
-import sys
 import numpy as np
 from functools import partial
-from src.model.apple_wraping import get_mean_wrapper
-# sys.path.append("../../../")
+from src.model.sphere_packing import get_mean_wrapper
 
 
 class ExtActFixed(nn.Module):
@@ -30,7 +28,7 @@ class ExtActFixed(nn.Module):
         mean, min_dist = get_mean_wrapper(
             K=self.K, d=self.d, not_doing=self.not_doing)
         var = min_dist/(self.var_coef*2*self.K*3**(1/self.d))
-        print('min_dist : ', min_dist, ' var val : ', var)
+        
 
         var = np.full((self.K, self.d), var)
         scale = np.log(var)

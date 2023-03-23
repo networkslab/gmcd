@@ -55,15 +55,10 @@ class RunConfig():
         # In which frequency the model should be saved (in number of iterations). Default: 10,000
         self.save_freq = 1e3
         # Whether to use all GPUs available or only one.
-        self.use_multi_gpu = False
-        # Does not load old checkpoints, and deletes those if checkpoint path is specified (including tensorboard file etc.)
-        self.restart = True
         # Folder(name) where checkpoints should be saved
         self.checkpoint_path = None
         # Tries to find parameter file in checkpoint path, and loads all given parameters from there
         self.load_config = True
-        # If selected, no model checkpoints will be saved
-        self.no_model_checkpoints = False
         # If selected, no training is performed but only an evaluation will be executed.
         self.only_eval = False
         self.clean_up = False  # Whether to remove all files after finishing or not
@@ -93,16 +88,16 @@ class RunConfig():
 
         # Add parameters for categorical encoding
         # If selected, variational dequantization is used for encoding categorical data.", action="store_true")
-        self.encoding_dequantization = False
+        # self.encoding_dequantization = False
         # If selected, the encoder distribution is joint over categorical variables.", action="store_true")
-        self.encoding_variational = False
+        # self.encoding_variational = False
 
         # Flow parameters
         # Number of flows used in the embedding layer.
-        self.encoding_num_flows = 0
+        # self.encoding_num_flows = 0
         # Number of hidden layers of flows used in the parallel embedding layer.
-        self.encoding_hidden_layers = 2
+        # self.encoding_hidden_layers = 2
         # Hidden size of flows used in the parallel embedding layer.
-        self.encoding_hidden_size = 128
+        # self.encoding_hidden_size = 128
         # Number of mixtures used in the coupling layers (if applicable).
-        self.encoding_num_mixtures = 8
+        # self.encoding_num_mixtures = 8

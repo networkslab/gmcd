@@ -31,7 +31,7 @@ class TrainTemplate:
         # Remove possible spaces. Name is used for creating default checkpoint path
         self.name_prefix = name_prefix.strip()
         self.runconfig = runconfig
-        self.scale_loss = self.runconfig.scale_loss
+        
         self.checkpoint_path, self.figure_path = prepare_checkpoint(
             checkpoint_path, self.name_prefix)
         # store model cinfo
@@ -57,74 +57,7 @@ class TrainTemplate:
             gamma=optimizer_params.lr_decay_factor)
         self.lr_minimum = optimizer_params.lr_minimum
 
-    def complete_evaluation(self, num_trial=4):
-        print('Starting the eval....')
-        check_params(self.model)
-        NUM_SAMPLES = 10000
-
-        index = 0
-        recompute_stat = False
-        print('recomputing stat :', recompute_stat)
-        detailed_metrics_test = {}
-        try:
-            detailed_metrics_test = self.nll_evaluation()
-        except:
-            print('couldnt get a best iter')
-            self.load_recent_model()
-
-        empty_sample_eval = self.task.evaluate_sample(
-            num_samples=1, watch_z_t=False, return_empty=True)
-        list_sample_eval = []
-        if empty_sample_eval.is_stored(self.figure_path, index):
-            sample_eval = empty_sample_eval.get(self.figure_path, index)
-            # recompute the stats
-            if recompute_stat:
-                sample_eval = self.task.get_sample_eval(sample_eval.samples)
-        else:
-            start = time.time()
-            sample_eval = self.task.evaluate_sample(num_samples=NUM_SAMPLES,
-                                                    watch_z_t=True)
-
-            sample_eval.store(self.figure_path, index)
-            end = time.time()
-            time_for_sampling = (end - start)
-            print('time_for_sampling', time_for_sampling)
-
-        list_sample_eval.append(sample_eval)
-        iter_trial = tqdm(range(num_trial-1))
-        for _ in iter_trial:
-            index += 1
-            if empty_sample_eval.is_stored(self.figure_path, index):
-                sample_eval = empty_sample_eval.get(self.figure_path, index)
-                if recompute_stat:
-                    sample_eval = self.task.get_sample_eval(
-                        sample_eval.samples)
-            else:
-
-                sample_eval = self.task.evaluate_sample(num_samples=NUM_SAMPLES,
-                                                        watch_z_t=False)
-
-            sample_eval.store(self.figure_path, index)
-
-            list_sample_eval.append(sample_eval)
-
-        index = 100
-        if empty_sample_eval.is_stored(self.figure_path, index):
-            big_sample_eval = empty_sample_eval.get(self.figure_path, index)
-            if recompute_stat:
-                sample_eval = self.task.get_sample_eval(sample_eval.samples)
-
-        else:
-            # at the end , concat everything and compute stat on the big samples
-            list_samples = [
-                sample_eval.samples for sample_eval in list_sample_eval]
-            big_samples = np.concatenate(list_samples, axis=0)
-
-            big_sample_eval = self.task.get_sample_eval(big_samples)
-        big_sample_eval.store(self.figure_path, index)
-
-        return list_sample_eval, big_sample_eval, detailed_metrics_test
-
+    
     def train_model(self,
                     max_iterations=1e6,
                     loss_freq=50,
@@ -320,9 +253,4 @@ class TrainTemplate:
         checkpoint_dict.update(add_param_dict)
         torch.save(checkpoint_dict, checkpoint_file)
 
-    def load_recent_model(self):
-        checkpoint_dict = load_model(self.checkpoint_path,
-                                     model=self.model,
-                                     optimizer=self.optimizer,
-                                     lr_scheduler=self.lr_scheduler)
-        return checkpoint_dict
+   

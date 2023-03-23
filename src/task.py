@@ -65,35 +65,20 @@ class TaskSyntheticModeling(TaskTemplate):
         else:
             return dataset_class
 
-    def evaluate_sample(self,
-                        num_samples,
-                        watch_z_t=False, return_empty=False):  # to do batch samples
-        if return_empty:
-            return SamplesEvaluation()
-
-        base_sample_eval = super().evaluate_sample(
-            num_samples,
-            watch_z_t=watch_z_t,)
-        samples = base_sample_eval.samples
-        return self.get_sample_eval(samples)
+    def evaluate_sample(self,num_samples):  # to do batch samples
+        self.base_sample_eval = super().evaluate_sample(num_samples)
+        return self.get_sample_eval(self.base_sample_eval)
 
     def get_sample_eval(self, samples):
-        samples_x = samples
-        base_sample_eval = super().get_sample_eval(samples_x)
-        num_samples = samples_x.shape[0]
-        S = self.model.S
-        K = self.model.K
-
-
-
-        histogram_samples_per_p = self.train_dataset.samples_to_dict(samples_x)
+        m = samples.shape[0] # num samples
+        histogram_samples_per_p = self.train_dataset.samples_to_dict(samples)
         size_support_dict = self.train_dataset.get_size_support_dict()
         empirical_prob = {}
         for _, dict_p in histogram_samples_per_p.items():
             for key, val in dict_p.items():
-                empirical_prob[key] = val / num_samples
-        unseen_support, train_slice = generalization_metric(
-            self.train_dataset.dict_permu, histogram_samples_per_p)
+                empirical_prob[key] = val / m
+        # unseen_support, train_slice = generalization_metric(
+        #     self.train_dataset.dict_permu, histogram_samples_per_p)
 
         all_ps = list(histogram_samples_per_p.keys())
         if 0 in all_ps:
@@ -102,19 +87,18 @@ class TaskSyntheticModeling(TaskTemplate):
             p_likely = p_rare = 0
         else:
             p_likely = sum(histogram_samples_per_p[max(
-                all_ps)].values()) / num_samples
+                all_ps)].values()) / m
             p_rare = sum(histogram_samples_per_p[min(
-                all_ps)].values()) / num_samples
+                all_ps)].values()) / m
         p_total = p_likely+p_rare
-        metrics_dict = {'p_rare': p_rare, 'p_likely': p_likely,
-                        'unseen_support': unseen_support, 'train_slice': train_slice, 'p_total': p_total}
+        metrics_dict = {'p_rare': p_rare, 'p_likely': p_likely, 'p_total': p_total}
         
-        metrics_dict['emp_d_tv'], metrics_dict['emp_hellinger'], metrics_dict['emp_tv_ood'] = get_diff_metric(
-            histogram_samples_per_p, size_support_dict, M=num_samples)
+        metrics_dict['d_tv'], metrics_dict['hellinger'], metrics_dict['tv_ood'] = get_diff_metric(
+            histogram_samples_per_p, size_support_dict, M=m)
 
-        metrics_dict.update(base_sample_eval.metrics_dict)
+        metrics_dict.update(samples.metrics_dict)
         sample_eval = SamplesEvaluation(
-            samples_x, metrics_dict, {'histogram_samples_per_p': histogram_samples_per_p})
+            samples, metrics_dict, {'histogram_samples_per_p': histogram_samples_per_p})
         return sample_eval
 
     def _train_batch_discrete(self, x_in, x_length):
