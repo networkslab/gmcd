@@ -1,5 +1,6 @@
 from src.synthetic_run_config import SyntheticRunConfig
 from src.train import start_training
+from src.train_helper import print_detailed_scores_and_sampling
 
 
 S = 6
@@ -13,6 +14,5 @@ def train(set_size, dataset):
 
 
 # This will train and store the model.
-result = train(set_size=S,   dataset=dataset)
-
-print(result)
+detailed_scores, sample_eval = train(set_size=S,   dataset=dataset)
+print_detailed_scores_and_sampling(detailed_scores, sample_eval)

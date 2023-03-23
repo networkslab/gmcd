@@ -8,7 +8,7 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from src.train_helper import check_if_best_than_saved, export_result_txt, prepare_checkpoint, print_detailed_scores_and_sampling, save_train_model_fun, store_model_dict, check_params
-from src.mutils import Tracker, get_device,  get_param_val, create_optimizer_from_args, load_model, write_dict_to_tensorboard
+from src.mutils import Tracker, get_device, create_optimizer_from_args, load_model, write_dict_to_tensorboard
 
 
 class TrainTemplate:
@@ -56,45 +56,6 @@ class TrainTemplate:
             optimizer_params.lr_decay_step,
             gamma=optimizer_params.lr_decay_factor)
         self.lr_minimum = optimizer_params.lr_minimum
-
-    def nll_evaluation(self,  checkpoint_model=None, return_result=False):
-        # Function for evaluation/testing of a model
-
-        # Load the "best" model by first loading the most recent one and determining the "best" model
-        checkpoint_dict = self.load_recent_model()
-        best_save_dict = get_param_val(checkpoint_dict,
-                                       "best_save_dict", {
-                                           "file": None,
-                                           "metric": -1,
-                                           "detailed_metrics": dict()
-                                       },
-                                       warning_if_default=True)
-        best_save_iter = best_save_dict["file"]
-        if not os.path.isfile(best_save_iter):
-            splits = best_save_iter.split("/")
-            checkpoint_index = splits.index("checkpoints")
-            best_save_iter = "/".join(splits[checkpoint_index:])
-        if not os.path.isfile(best_save_iter):
-            print(
-                "[!] WARNING: Tried to load best model \"%s\", but file does not exist"
-                % (best_save_iter))
-        else:
-            load_model(best_save_iter, model=self.model)
-        # Print saved information of performance on validation set
-        print("\n" + "-" * 100 + "\n")
-        print("Best evaluation iteration", best_save_iter)
-        print("Best evaluation metric", best_save_dict["metric"])
-        print("Detailed metrics")
-        for metric_name, metric_val in best_save_dict[
-                "detailed_metrics"].items():
-            print("-> %s: %s" % (metric_name, str(metric_val)))
-        print("\n" + "-" * 100 + "\n")
-
-        # Test model
-        self.task.checkpoint_path = self.checkpoint_path
-        eval_metric, detailed_metrics = self.task.test()
-
-        return detailed_metrics
 
     def complete_evaluation(self, num_trial=4):
         print('Starting the eval....')
@@ -172,38 +133,18 @@ class TrainTemplate:
                     max_gradient_norm=0.25,
                     no_model_checkpoints=False):
 
-        parameters_to_optimize = list(self.model.parameters())
-
         check_params(self.model)
-        # Setup dictionary to save evaluation details in
-        checkpoint_dict = self.load_recent_model()
-        # Iteration to start from
-        start_iter = get_param_val(checkpoint_dict,
-                                   "iteration",
-                                   0,
-                                   warning_if_default=False)
-        evaluation_dict = get_param_val(
-            checkpoint_dict,
-            "evaluation_dict",
-            dict(),
-            warning_if_default=False
-        )  # Dictionary containing validation performances over time
-        best_save_dict = get_param_val(checkpoint_dict,
-                                       "best_save_dict", {
-                                           "file": None,
-                                           "metric": 1e6,
-                                           "detailed_metrics": None,
-                                           "test": None
-                                       },
-                                       warning_if_default=False)
+        start_iter = 0
+        best_save_dict = {
+            "file": None,
+            "metric": 1e6,
+            "detailed_metrics": None,
+            "test": None
+        }
         best_save_iter = best_save_dict["file"]
-        last_save = None if start_iter == 0 else self.get_checkpoint_filename(
-            start_iter)
-        if last_save is not None and not os.path.isfile(last_save):
-            print(
-                "[!] WARNING: Could not find last checkpoint file specified as "
-                + last_save)
-            last_save = None
+        evaluation_dict = {}
+        last_save = None
+
         test_NLL = None  # Possible test performance determined in the end of the training
 
         def save_train_model(index_iter):
@@ -221,28 +162,22 @@ class TrainTemplate:
         time_per_step = Tracker()
         time_per_step_list = []
         train_losses = Tracker()
-        
-
         self.model.eval()
         self.task.initialize()
+
         print("=" * 50 + "\nStarting training...\n" + "=" * 50)
 
         print("Performing initial evaluation...")
 
-        eval_loss, detailed_scores = self.task.eval(initial_eval=True)
+        detailed_scores = self.task.eval(initial_eval=True)
         start = time.time()
-
-        # self.task.check_dead_zone('start_training_')
-
-        sample_eval = self.task.evaluate_sample(num_samples=self.NUM_SAMPLES,
-                                                watch_z_t=False)
+        sample_eval = self.task.evaluate_sample(num_samples=self.NUM_SAMPLES)
         end = time.time()
         time_for_sampling = (end - start)
-
         print_detailed_scores_and_sampling(detailed_scores,
-                                            sample_eval)
+                                           sample_eval)
         print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
-                "{:.2f}".format((time_for_sampling)), ' sec')
+              "{:.2f}".format((time_for_sampling)), ' sec')
 
         self.model.train()
         detailed_scores_to_tensorboard = {}
@@ -250,11 +185,10 @@ class TrainTemplate:
             sample_eval.get_printable_metrics_dict())
         detailed_scores_to_tensorboard.update(detailed_scores)
         write_dict_to_tensorboard(writer,
-                                    detailed_scores_to_tensorboard,
-                                    base_name="eval",
-                                    iteration=start_iter)
+                                  detailed_scores_to_tensorboard,
+                                  base_name="eval",
+                                  iteration=start_iter)
 
-        
         index_iter = start_iter
         keep_going = True
         self.loss_prev = None
@@ -267,8 +201,8 @@ class TrainTemplate:
             self.optimizer.zero_grad()
             loss.backward()
 
-            torch.nn.utils.clip_grad_norm_(parameters_to_optimize,
-                                            max_gradient_norm)
+            torch.nn.utils.clip_grad_norm_(list(self.model.parameters()),
+                                           max_gradient_norm)
             self.optimizer.step()
             if self.optimizer.param_groups[0]['lr'] > self.lr_minimum:
                 self.lr_scheduler.step()
@@ -289,20 +223,20 @@ class TrainTemplate:
                         loss_avg))
                 writer.add_scalar("train/loss", loss_avg, index_iter + 1)
                 writer.add_scalar("train/learning_rate",
-                                    self.optimizer.param_groups[0]['lr'],
-                                    index_iter + 1)
+                                  self.optimizer.param_groups[0]['lr'],
+                                  index_iter + 1)
                 writer.add_scalar("train/training_time", train_time_avg,
-                                    index_iter + 1)
+                                  index_iter + 1)
 
                 self.task.add_summary(writer,
-                                        index_iter + 1,
-                                        checkpoint_path=self.checkpoint_path)
+                                      index_iter + 1,
+                                      checkpoint_path=self.checkpoint_path)
 
             # Performing evaluation every "eval_freq" steps
             if (index_iter + 1) % eval_freq == 0:
                 self.model.eval()
 
-                eval_loss, detailed_scores = self.task.eval()
+                detailed_scores = self.task.eval()
                 start = time.time()
                 sample_eval = self.task.evaluate_sample(
                     num_samples=self.NUM_SAMPLES, watch_z_t=True)
@@ -312,7 +246,7 @@ class TrainTemplate:
                     detailed_scores, sample_eval)
 
                 print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
-                        "{:.2f}".format((time_for_sampling)), ' sec')
+                      "{:.2f}".format((time_for_sampling)), ' sec')
                 if 'overfit_detected' in sample_eval.all_dict:
                     if sample_eval.all_dict['overfit_detected']:
                         print('model overfitting...')
@@ -323,21 +257,19 @@ class TrainTemplate:
                     sample_eval.get_printable_metrics_dict())
                 detailed_scores_to_tensorboard.update(detailed_scores)
                 write_dict_to_tensorboard(writer,
-                                            detailed_scores_to_tensorboard,
-                                            base_name="eval",
-                                            iteration=index_iter + 1)
+                                          detailed_scores_to_tensorboard,
+                                          base_name="eval",
+                                          iteration=index_iter + 1)
 
                 # If model performed better on validation than any other iteration so far => save it and eventually replace old model
-                check_if_best_than_saved(last_save, eval_loss,
-                                            detailed_scores, best_save_dict,
-                                            index_iter,
-                                            self.get_checkpoint_filename,
-                                            self.checkpoint_path,
-                                            evaluation_dict, save_train_model)
+                check_if_best_than_saved(last_save, detailed_scores['loss'],
+                                         detailed_scores, best_save_dict,
+                                         index_iter,
+                                         self.get_checkpoint_filename,
+                                         self.checkpoint_path,
+                                         evaluation_dict, save_train_model)
 
-            # Independent of evaluation, the model is saved every "save_freq" steps. This prevents loss of information if model does not improve for a while
-            if (index_iter + 1) % save_freq == 0 and not os.path.isfile(
-                    self.get_checkpoint_filename(index_iter + 1)):
+            if (index_iter + 1) % save_freq == 0:
                 save_train_model(index_iter + 1)
                 if last_save is not None and os.path.isfile(
                         last_save) and last_save != best_save_iter:
@@ -350,21 +282,17 @@ class TrainTemplate:
         print('time to train ', np.sum(time_per_step_list))
 
         # Testing the trained model
-        test_NLL, detailed_scores = self.task.test()
-        print("=" * 50 + "\nTest performance: %lf" % (test_NLL))
+        detailed_scores = self.task.test()
+        print("=" * 50 + "\nTest performance: %lf" % (detailed_scores['loss']))
         detailed_scores["original_NLL"] = test_NLL
         best_save_dict["test"] = detailed_scores
 
-        sample_eval = self.task.evaluate_sample(num_samples=10 *
-                                                self.NUM_SAMPLES,
-                                                watch_z_t=True)
+        sample_eval = self.task.evaluate_sample(
+            num_samples=100*self.NUM_SAMPLES)
 
-        detailed_scores.update(sample_eval.get_all_metrics_dict())
-
-       
         export_result_txt(best_save_iter, best_save_dict, self.checkpoint_path)
         writer.close()
-        return detailed_scores
+        return detailed_scores, sample_eval
 
     def get_checkpoint_filename(self, iteration):
         checkpoint_file = os.path.join(

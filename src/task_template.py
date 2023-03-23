@@ -207,7 +207,7 @@ class TaskTemplate:
     def eval(self, data_loader=None, **kwargs):
         # Default: if no dataset is specified, we use validation dataset
         if data_loader is None:
-            assert self.val_data_loader is not None, "[!] ERROR: Validation dataset not loaded. Please load the dataset beforehand for evaluation."
+            
             data_loader = self.val_data_loader
         is_test = (data_loader == self.test_data_loader)
 
@@ -245,20 +245,16 @@ class TaskTemplate:
         for key, batch_val in result_batch_dict.items():
             detailed_metrics[key] = batch_val / max(1e-5, nll_counter)
 
-        detailed_metrics["bpd"] = self.loss_to_bpd(detailed_metrics['nll'])
+        
 
         self.model.train()
         eval_time = int(time.time() - start_time)
-        print("Finished %s with bpd of %4.3f, (%imin %is)" % ("testing" if data_loader ==
-                                                              self.test_data_loader else "evaluation", detailed_metrics["bpd"], eval_time/60, eval_time % 60))
+        print("Finished %s with loss of %4.3f, (%imin %is)" % ("testing" if data_loader ==
+                                                              self.test_data_loader else "evaluation", detailed_metrics["loss"], eval_time/60, eval_time % 60))
         torch.cuda.empty_cache()
 
-        if "loss_metric" in detailed_metrics:
-            loss_metric = detailed_metrics["loss_metric"]
-        else:
-            loss_metric = detailed_metrics["nll"]
-
-        return loss_metric, detailed_metrics
+        
+        return detailed_metrics
 
     def _train_batch(self, batch, iteration):
         x_in, x_length, x_channel_mask = self._preprocess_batch(batch)
@@ -322,7 +318,7 @@ class TaskTemplate:
         loss = -(ldj / x_length.float()).mean()
         std_loss = (ldj / x_length.float()).std()
 
-        return {'nll': loss, 'std_nll': std_loss}
+        return {'loss': loss, 'std_loss': std_loss}
 
     @staticmethod
     def batch_to_device(batch):

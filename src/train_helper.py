@@ -86,7 +86,8 @@ def save_train_model_fun(no_model_checkpoints,
 def print_detailed_scores_and_sampling(detailed_scores, sample_eval):
 
     for key, val in detailed_scores.items():
-        print(key+" : {:.4f}".format(val), end=" ")
+        if val is not None:
+            print(key+" : {:.4f}".format(val), end=" ")
     for key, val in sample_eval.get_printable_metrics_dict().items():
         print(key+" : {:.4f}".format(val), end=" ")
     print()
