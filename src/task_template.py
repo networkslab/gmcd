@@ -259,8 +259,7 @@ class TaskTemplate:
 
         return loss
 
-    def loss_to_bpd(self, loss):
-        return (np.log2(np.exp(1)) * loss)
+
 
     def test(self, **kwargs):
         return self.eval(data_loader=self.test_data_loader, **kwargs)

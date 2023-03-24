@@ -6,7 +6,7 @@ import os
 from glob import glob
 
 
-PARAM_CONFIG_FILE = "param_config.pik"
+PARAM_CONFIG_FILE = "param_config.pk"
 
 
 class Tracker:
@@ -92,32 +92,32 @@ def load_model(checkpoint_path, model=None, optimizer=None, lr_scheduler=None, l
     return add_param_dict
 
 
-def general_args_to_params(args, model_params=None):
+# def general_args_to_params(args, model_params=None):
 
-    optimizer_params = {
-        "optimizer": args.optimizer,
-        "learning_rate": args.learning_rate,
-        "weight_decay": args.weight_decay,
-        "lr_decay_factor": args.lr_decay_factor,
-        "lr_decay_step": args.lr_decay_step,
-        "lr_minimum": args.lr_minimum,
-        "momentum": args.momentum,
-        "beta1": args.beta1,
-        "beta2": args.beta2,
-        "warmup": args.warmup
-    }
+#     optimizer_params = {
+#         "optimizer": args.optimizer,
+#         "learning_rate": args.learning_rate,
+#         "weight_decay": args.weight_decay,
+#         "lr_decay_factor": args.lr_decay_factor,
+#         "lr_decay_step": args.lr_decay_step,
+#         "lr_minimum": args.lr_minimum,
+#         "momentum": args.momentum,
+#         "beta1": args.beta1,
+#         "beta2": args.beta2,
+#         "warmup": args.warmup
+#     }
 
-    # Set seed
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if torch.cuda.is_available:
-        torch.cuda.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+#     # Set seed
+#     np.random.seed(args.seed)
+#     random.seed(args.seed)
+#     torch.manual_seed(args.seed)
+#     if torch.cuda.is_available:
+#         torch.cuda.manual_seed(args.seed)
+#         torch.cuda.manual_seed_all(args.seed)
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
 
-    return model_params, optimizer_params
+#     return model_params, optimizer_params
 
 
 def create_optimizer_from_args(parameters_to_optimize, optimizer_params):
@@ -168,39 +168,3 @@ def get_device():
 
     return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-
-# def one_hot(x, num_classes, dtype=torch.float32):
-#     if isinstance(x, np.ndarray):
-#         x_onehot = np.zeros(x.shape + (num_classes,), dtype=np.float32)
-#         x_onehot[np.arange(x.shape[0]), x] = 1.0
-#     elif isinstance(x, torch.Tensor):
-#         assert torch.max(
-#             x) < num_classes, "[!] ERROR: One-hot input has larger entries (%s) than classes (%i)" % (str(torch.max(x)), num_classes)
-#         x_onehot = x.new_zeros(x.shape + (num_classes,), dtype=dtype)
-#         x_onehot.scatter_(-1, x.unsqueeze(dim=-1), 1)
-#     else:
-#         print("[!] ERROR: Unknown object given for one-hot conversion:", x)
-#         sys.exit(1)
-#     return x_onehot
-
-
-# def create_T_one_hot(length, dataset_max_len, dtype=torch.float32):
-
-#     if length is None:
-#         print("Length", length)
-#         print("Dataset max len", dataset_max_len)
-#     max_batch_len = length.max()
-#     assert max_batch_len <= dataset_max_len, "[!] ERROR - T_one_hot: Max batch size (%s) was larger than given dataset max length (%s)" % (
-#         str(max_batch_len.item()), str(dataset_max_len))
-#     time_range = torch.arange(max_batch_len, device=length.device).view(
-#         1, max_batch_len).expand(length.size(0), -1)
-#     length_onehot_pos = one_hot(
-#         x=time_range.squeeze(), num_classes=dataset_max_len, dtype=dtype)
-#     inv_time_range = (length.unsqueeze(dim=-1)-1) - time_range
-#     length_mask = (inv_time_range >= 0.0).float()
-#     inv_time_range = torch.flatten(inv_time_range.clamp(min=0.0)).type(torch.int64)
-#     length_onehot_neg = one_hot(x=inv_time_range, num_classes=dataset_max_len, dtype=dtype)
-#     length_onehot_neg = length_onehot_neg.reshape(length_onehot_pos.shape)
-#     length_onehot = torch.cat([length_onehot_pos, length_onehot_neg], dim=-1)
-#     length_onehot = length_onehot * length_mask.unsqueeze(dim=-1)
-#     return length_onehot
