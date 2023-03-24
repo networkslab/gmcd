@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 ```bash
 cd gmcd
-python run_train.py
+python run_train.py --S [6/8/10]
 ```
 
 
