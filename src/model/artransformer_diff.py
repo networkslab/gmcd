@@ -187,8 +187,8 @@ class ArTransformerDiffusion(GaussianDiffusion):
         logits_output = self.dynamics(t, z_t)
         terms = {}
         transformer_probs = logits_to_probs(logits_output)
-        test = transformer_probs[0, 0, :]
-
+       
+       
         logits_output_flat = logits_output.reshape(-1, self.K)
         w = x_cat
         w_flat = w.view(-1)
