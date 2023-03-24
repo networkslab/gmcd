@@ -31,12 +31,14 @@ class ArTransformerDiffusion(GaussianDiffusion):
 
         self.extActFixed = extActFixed
         K = extActFixed.fixed_embedding.num_embeddings
-        self.loss_type = LossType.NLL
+        self.loss_type = LossType.NOISY_GUIDED_SHARP
         self.K = K
         self.S = S
         self.T = T
         self.d = latent_dim
         self.alpha = diffusion_params.alpha
+        if self.alpha is None:
+            self.loss_type = LossType.NLL
         self.posterior_sample = posterior_sample_fun  # p(x|z, t)
         self.nll_loss = th.nn.BCEWithLogitsLoss()
         try:
@@ -77,7 +79,7 @@ class ArTransformerDiffusion(GaussianDiffusion):
             ldj = self.nll(z)
             return z, ldj
 
-    def log_likelihood(self, z_0, watch_Lt=True):
+    def log_likelihood(self, z_0):
         b = z_0.size(0)
         device = z_0.device
         log_likelihood = 0
@@ -155,14 +157,14 @@ class ArTransformerDiffusion(GaussianDiffusion):
         z_t = z_t.reshape(-1, self.S, self.d)
         # to do, z_t from z_t-1
         check_fraction_same_x = False
-        if self.loss_type in [LossType.NOISY_SOFT, LossType.TRUE_NOISY_SOFT, LossType.NOISY_GUIDED, LossType.NOISY_GUIDED_SHARP]:
+        if self.loss_type in [LossType.NOISY_GUIDED_SHARP]:
 
             dist = self.get_zt_given(z_t, t)
             w = self.get_w(dist, z_0, z_t, t).view(-1, self.S)
             w = w.permute(1, 0)
             norm_w = th.sum(w, dim=0).view(-1)  # sum over k
             p_w = th.div(w, norm_w).permute(1, 0).view(-1, self.S, self.K)
-            if self.loss_type == LossType.NOISY_SOFT or self.loss_type == LossType.NOISY_GUIDED_SHARP:
+            if self.loss_type == LossType.NOISY_GUIDED_SHARP:
                 p_w_power = p_w**self.alpha
                 p_w_power = p_w_power.reshape(-1, self.K)
                 p_w_power = p_w_power.permute(1, 0)
@@ -180,18 +182,8 @@ class ArTransformerDiffusion(GaussianDiffusion):
         if check_fraction_same_x:
             self.check_fraction_same_x(w, x_cat, t)
 
-        if self.loss_type == LossType.WALKING:
-            if kwargs['beta'] < 1.86:
-                w = np.random.poisson()
-                for _ in range(w):
-                    index_not_zero = t != 0
-                    input_z_t = z_t[index_not_zero]
-                    input_t = t[index_not_zero]
-                    t[index_not_zero] = t[index_not_zero]-1
-                    denoising_step = self.p_sample(
-                        input_z_t, input_t)["sample"]
-                    z_t[index_not_zero] = denoising_step
-
+       
+       
         logits_output = self.dynamics(t, z_t)
         terms = {}
         transformer_probs = logits_to_probs(logits_output)
@@ -201,15 +193,8 @@ class ArTransformerDiffusion(GaussianDiffusion):
         w = x_cat
         w_flat = w.view(-1)
         w_flat = F.one_hot(w_flat, num_classes=self.K).type(th.float32)
-        if self.loss_type in [LossType.NOISY_SOFT, LossType.TRUE_NOISY_SOFT]:
-            p_w_flat = p_w.view(-1, self.K)
-
-            neg_log_likelihood = F.binary_cross_entropy_with_logits(
-                logits_output_flat, p_w_flat, reduction='none')
-
-        else:
-            neg_log_likelihood = F.binary_cross_entropy_with_logits(
-                logits_output_flat, w_flat, reduction='none')
+        neg_log_likelihood = F.binary_cross_entropy_with_logits(
+            logits_output_flat, w_flat, reduction='none')
         neg_log_likelihood = th.sum(
             neg_log_likelihood.view(-1, self.S, self.K), dim=2)
         terms['loss'] = th.sum(neg_log_likelihood, dim=1)

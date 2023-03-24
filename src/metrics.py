@@ -1,18 +1,13 @@
 import sys
 import numpy as np
-
-
+import torch
 from multiprocessing import Pool
 import os
-import pickle as pk
 import time
 import matplotlib.pyplot as plt
-import numpy as np
 from scipy.stats.stats import pearsonr
 import random
 import itertools
-
-import torch
 
 
 def to_one_hot(seq, K):
@@ -425,6 +420,7 @@ def get_total_var_dist(dict_support_1, dict_support_2):
         tv += diff
     return tv/2
 
+
 def one_hot(x, num_classes, dtype=torch.float32):
     if isinstance(x, np.ndarray):
         x_onehot = np.zeros(x.shape + (num_classes,), dtype=np.float32)
@@ -438,6 +434,7 @@ def one_hot(x, num_classes, dtype=torch.float32):
         print("[!] ERROR: Unknown object given for one-hot conversion:", x)
         sys.exit(1)
     return x_onehot
+
 
 def get_frac_overlap(training_dict, samples_dict):
     frac_overlap = 0

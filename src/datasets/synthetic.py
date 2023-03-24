@@ -11,7 +11,7 @@ Dataset class for creating the shuffling dataset.
 
 class SyntheticDataset(data.Dataset):
 
-    def __init__(self, train=False, val=False, test=False, S=None, K=None, dataset_name="", **kwargs):
+    def __init__(self, train=False, val=False, test=False, S=None, K=None, dataset_name=""):
         self.S = S
         self.K = K
         self.dataset_name = dataset_name

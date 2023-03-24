@@ -127,7 +127,7 @@ class DenoisingTransformer(torch.nn.Module):
             # attention heads at that depth
             local_attn_window_size=diffusion_params.transformer_local_size,
             # receptive field of the local attention
-            reversible=diffusion_params.transformer_reversible,
+            reversible=False,
             # use reversible nets, from Reformer paper
         )
 

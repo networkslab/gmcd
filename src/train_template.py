@@ -21,7 +21,6 @@ class TrainTemplate:
                  runconfig,
                  batch_size,
                  checkpoint_path,
-                 debug=False,
                  name_prefix=""):
         self.NUM_SAMPLES = 1000
         model_name = 'GMCD'
@@ -34,7 +33,7 @@ class TrainTemplate:
         
         self.checkpoint_path, self.figure_path = prepare_checkpoint(
             checkpoint_path, self.name_prefix)
-        # store model cinfo
+        # store model info
         store_model_dict(self.figure_path, runconfig)
         runconfig.checkpoint_path = self.checkpoint_path
         # Load model
@@ -42,8 +41,7 @@ class TrainTemplate:
         self.model = self.model.to(get_device())
 
         # Load task
-        self.task = self._create_task(runconfig,
-                                      debug=debug)
+        self.task = self._create_task(runconfig)
         # Load optimizer and checkpoints
         self._create_optimizer(runconfig)
 
@@ -104,18 +102,18 @@ class TrainTemplate:
 
         detailed_scores = self.task.eval(initial_eval=True)
         start = time.time()
-        sample_eval = self.task.evaluate_sample(num_samples=self.NUM_SAMPLES)
+        sample_metrics = self.task.evaluate_sample(num_samples=self.NUM_SAMPLES)
         end = time.time()
         time_for_sampling = (end - start)
         print_detailed_scores_and_sampling(detailed_scores,
-                                           sample_eval)
+                                           sample_metrics)
         print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
               "{:.2f}".format((time_for_sampling)), ' sec')
 
         self.model.train()
         detailed_scores_to_tensorboard = {}
         detailed_scores_to_tensorboard.update(
-            sample_eval.get_printable_metrics_dict())
+            sample_metrics.get_printable_metrics_dict())
         detailed_scores_to_tensorboard.update(detailed_scores)
         write_dict_to_tensorboard(writer,
                                   detailed_scores_to_tensorboard,
@@ -171,23 +169,21 @@ class TrainTemplate:
 
                 detailed_scores = self.task.eval()
                 start = time.time()
-                sample_eval = self.task.evaluate_sample(
-                    num_samples=self.NUM_SAMPLES, watch_z_t=True)
+                sample_metrics = self.task.evaluate_sample(
+                    num_samples=self.NUM_SAMPLES)
                 end = time.time()
                 time_for_sampling = (end - start)
                 print_detailed_scores_and_sampling(
-                    detailed_scores, sample_eval)
+                    detailed_scores, sample_metrics)
 
                 print('time for sampling ', self.NUM_SAMPLES, ' samples : ',
                       "{:.2f}".format((time_for_sampling)), ' sec')
-                if 'overfit_detected' in sample_eval.all_dict:
-                    if sample_eval.all_dict['overfit_detected']:
-                        print('model overfitting...')
+                if 'overfit_detected' in sample_metrics.metrics:
+                    if sample_metrics.metrics['overfit_detected']:
+                        print('The model is overfitting to the training samples...')
                         keep_going = False
                 self.model.train()
-                detailed_scores_to_tensorboard = {}
-                detailed_scores_to_tensorboard.update(
-                    sample_eval.get_printable_metrics_dict())
+                detailed_scores_to_tensorboard = sample_metrics.get_printable_metrics_dict()
                 detailed_scores_to_tensorboard.update(detailed_scores)
                 write_dict_to_tensorboard(writer,
                                           detailed_scores_to_tensorboard,
@@ -220,12 +216,12 @@ class TrainTemplate:
         detailed_scores["original_NLL"] = test_NLL
         best_save_dict["test"] = detailed_scores
 
-        sample_eval = self.task.evaluate_sample(
-            num_samples=100*self.NUM_SAMPLES)
+        sample_metrics = self.task.evaluate_sample(
+            num_samples=10*self.NUM_SAMPLES)
 
         export_result_txt(best_save_iter, best_save_dict, self.checkpoint_path)
         writer.close()
-        return detailed_scores, sample_eval
+        return detailed_scores, sample_metrics
 
     def get_checkpoint_filename(self, iteration):
         checkpoint_file = os.path.join(

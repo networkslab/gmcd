@@ -3,7 +3,7 @@ from src.train import start_training
 from src.train_helper import print_detailed_scores_and_sampling
 
 
-S = 6
+S = 10
 dataset = 'sort'
 
 

@@ -1,7 +1,7 @@
+from src.sample_metrics import SamplesMetrics
 from src.optimizer.Scheduler import ExponentialScheduler
 from src.datasets.synthetic import SyntheticDataset
-from src.metrics import generalization_metric, get_diff_metric, get_exact_metrics
-from src.sample_output import SamplesEvaluation
+from src.metrics import get_diff_metric
 from src.task_template import TaskTemplate
 import torch
 
@@ -40,45 +40,30 @@ class TaskSyntheticModeling(TaskTemplate):
     def _load_datasets(self):
         self.S = self.run_config.S
         self.K = self.run_config.K
-        dataset_name = self.run_config.dataset
-        dataset_class, dataset_kwargs = TaskSyntheticModeling.get_dataset_class(
-            dataset_name, return_kwargs=True)
-        print("Loading dataset %s..." % dataset_name)
+        print("Loading synthetic dataset K=%s..." % self.S)
 
-        self.train_dataset = dataset_class(S=self.S, K=self.K,
-                                           train=True,
-                                           **dataset_kwargs)
-        self.val_dataset = dataset_class(S=self.S, K=self.K,
-                                         val=True,
-                                         **dataset_kwargs)
-        self.test_dataset = dataset_class(S=self.S, K=self.K,
-                                          test=True,
-                                          **dataset_kwargs)
+        self.train_dataset = SyntheticDataset(S=self.S, K=self.K,
+                                              train=True)
+        self.val_dataset = SyntheticDataset(S=self.S, K=self.K,
+                                            val=True)
+        self.test_dataset = SyntheticDataset(S=self.S, K=self.K,
+                                             test=True)
 
-    @staticmethod
-    def get_dataset_class(dataset_name, return_kwargs=False):
-        dataset_kwargs = {'dataset_name': dataset_name}
-        dataset_class = SyntheticDataset
+    def evaluate_sample(self, num_samples):
+        samples_np = self.sample(num_samples)  # obtain the samples
+        # compute the metrics on the samples
+        return self.get_sample_metrics(samples_np)
 
-        if return_kwargs:
-            return dataset_class, dataset_kwargs
-        else:
-            return dataset_class
-
-    def evaluate_sample(self,num_samples):  # to do batch samples
-        self.base_sample_eval = super().evaluate_sample(num_samples)
-        return self.get_sample_eval(self.base_sample_eval)
-
-    def get_sample_eval(self, samples):
-        m = samples.shape[0] # num samples
-        histogram_samples_per_p = self.train_dataset.samples_to_dict(samples)
+    def get_sample_metrics(self, samples_np):
+        m = samples_np.shape[0]  # num samples
+        base_samples_results = super().get_sample_metrics(samples_np)
+        histogram_samples_per_p = self.train_dataset.samples_to_dict(
+            samples_np)
         size_support_dict = self.train_dataset.get_size_support_dict()
         empirical_prob = {}
         for _, dict_p in histogram_samples_per_p.items():
             for key, val in dict_p.items():
                 empirical_prob[key] = val / m
-        # unseen_support, train_slice = generalization_metric(
-        #     self.train_dataset.dict_permu, histogram_samples_per_p)
 
         all_ps = list(histogram_samples_per_p.keys())
         if 0 in all_ps:
@@ -91,15 +76,17 @@ class TaskSyntheticModeling(TaskTemplate):
             p_rare = sum(histogram_samples_per_p[min(
                 all_ps)].values()) / m
         p_total = p_likely+p_rare
-        metrics_dict = {'p_rare': p_rare, 'p_likely': p_likely, 'p_total': p_total}
-        
-        metrics_dict['d_tv'], metrics_dict['hellinger'], metrics_dict['tv_ood'] = get_diff_metric(
+
+        d_tv, H, tv_ood = get_diff_metric(
             histogram_samples_per_p, size_support_dict, M=m)
 
-        metrics_dict.update(samples.metrics_dict)
-        sample_eval = SamplesEvaluation(
-            samples, metrics_dict, {'histogram_samples_per_p': histogram_samples_per_p})
-        return sample_eval
+        metrics = {'p_rare': p_rare,
+                   'p_likely': p_likely, 'p_total': p_total, 'd_tv': d_tv, 'H': H, 'tv_ood': tv_ood, 'histogram_samples_per_p': histogram_samples_per_p}
+
+        sample_results = SamplesMetrics(
+            samples_np, metrics, histogram_samples_per_p)
+        sample_results.add_new_metrics(base_samples_results.metrics)
+        return sample_results
 
     def _train_batch_discrete(self, x_in, x_length):
         _, ldj = self.model(x_in, reverse=False, length=x_length)

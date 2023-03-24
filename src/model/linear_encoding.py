@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as D
 from src.metrics import one_hot
-from src.model.activation_fixed import ExtActFixed
+from src.model.fixed_encoder import ExtActFixed
 from src.model.distributions import GaussianDistribution
 
 
@@ -90,7 +90,6 @@ class LinearCategoricalEncoding(nn.Module):
             ) == self.encoding_dim, "[!] ERROR in categorical decoding: Input must have %i latent dimensions but got %i" % (
                 self.encoding_dim, z.shape[-1])
 
-            class_prior_log = self.category_prior[None, None, :]
             z_cont = z
 
             z_out = self._posterior_sample(z_cont)

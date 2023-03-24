@@ -75,36 +75,36 @@ class ExtActFixed(nn.Module):
         # print(self.bias_scale_matrix.numpy())
         return z, ldj
 
-    def need_data_init(self):
-        return self.data_init
+    # def need_data_init(self):
+    #     return self.data_init
 
-    def data_init_forward(self,
-                          input_data,
-                          channel_padding_mask=None,
-                          **kwargs):
-        if channel_padding_mask is None:
-            channel_padding_mask = input_data.new_ones(input_data.shape)
-        else:
-            channel_padding_mask = channel_padding_mask.view(
-                input_data.shape[:-1] + channel_padding_mask.shape[-1:])
-        mask = channel_padding_mask
-        num_exp = mask.sum(dim=[0, 1], keepdims=True)
-        masked_input = input_data
+    # def data_init_forward(self,
+    #                       input_data,
+    #                       channel_padding_mask=None,
+    #                       **kwargs):
+    #     if channel_padding_mask is None:
+    #         channel_padding_mask = input_data.new_ones(input_data.shape)
+    #     else:
+    #         channel_padding_mask = channel_padding_mask.view(
+    #             input_data.shape[:-1] + channel_padding_mask.shape[-1:])
+    #     mask = channel_padding_mask
+    #     num_exp = mask.sum(dim=[0, 1], keepdims=True)
+    #     masked_input = input_data
 
-        bias_init = -masked_input.sum(dim=[0, 1], keepdims=True) / num_exp
+    #     bias_init = -masked_input.sum(dim=[0, 1], keepdims=True) / num_exp
 
-        var_data = (((input_data + bias_init)**2) * mask).sum(
-            dim=[0, 1], keepdims=True) / num_exp
-        scaling_init = -0.5 * var_data.log()
+    #     var_data = (((input_data + bias_init)**2) * mask).sum(
+    #         dim=[0, 1], keepdims=True) / num_exp
+    #     scaling_init = -0.5 * var_data.log()
 
-        bias = torch.cat([bias_init, scaling_init], dim=-1).squeeze()
+    #     bias = torch.cat([bias_init, scaling_init], dim=-1).squeeze()
 
-        out = (masked_input + bias_init) * torch.exp(scaling_init)
-        out_mean = (out * mask).sum(dim=[0, 1]) / num_exp.squeeze()
-        out_var = torch.sqrt(
-            (((out - out_mean)**2) * mask).sum(dim=[0, 1]) / num_exp)
-        print("[INFO - External ActNorm] New mean", out_mean)
-        print("[INFO - External ActNorm] New variance", out_var)
+    #     out = (masked_input + bias_init) * torch.exp(scaling_init)
+    #     out_mean = (out * mask).sum(dim=[0, 1]) / num_exp.squeeze()
+    #     out_var = torch.sqrt(
+    #         (((out - out_mean)**2) * mask).sum(dim=[0, 1]) / num_exp)
+    #     print("[INFO - External ActNorm] New mean", out_mean)
+    #     print("[INFO - External ActNorm] New variance", out_var)
 
     def info(self):
         return "External Activation Fixed Log (d=%i)" % (self.d)

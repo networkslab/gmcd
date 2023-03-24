@@ -1,5 +1,6 @@
 
 from tqdm import tqdm
+from src.sample_metrics import SamplesMetrics
 from src.mutils import get_device
 from src.metrics import *
 import pickle as pk
@@ -10,7 +11,6 @@ import numpy as np
 from statistics import mean
 import time
 import os
-from src.sample_output import SamplesEvaluation
 import math
 
 
@@ -24,7 +24,7 @@ class TaskTemplate:
         self.batch_size = batch_size
         self.train_batch_size = batch_size
         self.debug = debug
-        self.max_samples = 1000
+        self.sampling_batch = 1000
         # Initializing dataset parameters
         self.train_dataset = None
         self.val_dataset = None
@@ -95,7 +95,6 @@ class TaskTemplate:
         self.frac_val_seen = get_frac_overlap(
             self.training_dict, self.test_dict)
 
-
     def data_to_dict(self, np_data):
         dict_data = {}
         for i in tqdm(range(np_data.shape[0])):
@@ -150,28 +149,25 @@ class TaskTemplate:
         # Perform task-specific training step
         return self._train_batch(batch, iteration=iteration)
 
-    def sample(self, num_samples, watch_z_t):
-        max_size_sample = self.max_samples  # ran out of mem otherwise?
+    def sample(self, num_samples):
+        sampling_batch = self.sampling_batch
         num_samples_total = 0
         samples_list = []
-        for _ in range(math.ceil(num_samples/max_size_sample)):
-            if num_samples_total+max_size_sample > num_samples:
+        for _ in range(math.ceil(num_samples/sampling_batch)):
+            if num_samples_total+sampling_batch > num_samples:
                 batch_num_samples = num_samples - num_samples_total
             else:
 
-                batch_num_samples = max_size_sample
+                batch_num_samples = sampling_batch
             num_samples_total += batch_num_samples
-            samples = self.model.sample(num_samples=batch_num_samples,
-                                        z_in=None,
-                                        length=None,
-                                        watch_z_t=watch_z_t)
+            samples = self.model.sample(num_samples=batch_num_samples)
             samples_list.append(samples['x'].cpu().detach().numpy())
         samples = np.array(samples_list)
         samples = samples.reshape(-1, samples.shape[2])
 
         return samples
 
-    def get_sample_stats(self, samples):
+    def __get_sample_stats(self, samples):
 
         r20_corr_abs = compute_corr_higher_order(
             samples, self.higher_order_dict_n_abs)
@@ -180,33 +176,28 @@ class TaskTemplate:
             self.training_dict, samples_dict)
         return frac_seen_samples, r20_corr_abs
 
-    def evaluate_sample(self, num_samples):
-
-        samples = self.sample(num_samples)
-
-        return self.get_sample_eval(samples)
-
-    def get_sample_eval(self, samples):
-        frac_seen_samples, r20_corr_abs = self.get_sample_stats(
-            samples)
+    # computes samples metrics on the samples_np and wrap up the results in SamplesResults
+    def get_sample_metrics(self, samples_np):
+        frac_seen_samples, r20_corr_abs = self.__get_sample_stats(
+            samples_np)
         overfit_detected = frac_seen_samples > self.frac_val_seen*1.5
-        metrics_dict = {'frac_seen_samples': frac_seen_samples,
-                        'overfit_detected': overfit_detected}
+        metrics = {'frac_seen_samples': frac_seen_samples,
+                   'overfit_detected': overfit_detected}
         for i, r20_abs in enumerate(r20_corr_abs):
             if r20_abs[1] < 0.05:
-                metrics_dict['r_20_abs'+str(i+2)] = r20_abs[0]
+                metrics['r_20_abs'+str(i+2)] = r20_abs[0]
             else:
-                metrics_dict['r_20_abs'+str(i+2)] = -2
+                metrics['r_20_abs'+str(i+2)] = -2
 
-        sample_eval = SamplesEvaluation(
-            samples, metrics_dict)
+        samples_results = SamplesMetrics(
+            samples_np, metrics)
 
-        return sample_eval
+        return samples_results
 
     def eval(self, data_loader=None, **kwargs):
         # Default: if no dataset is specified, we use validation dataset
         if data_loader is None:
-            
+
             data_loader = self.val_data_loader
         is_test = (data_loader == self.test_data_loader)
 
@@ -244,15 +235,12 @@ class TaskTemplate:
         for key, batch_val in result_batch_dict.items():
             detailed_metrics[key] = batch_val / max(1e-5, nll_counter)
 
-        
-
         self.model.train()
         eval_time = int(time.time() - start_time)
         print("Finished %s with loss of %4.3f, (%imin %is)" % ("testing" if data_loader ==
-                                                              self.test_data_loader else "evaluation", detailed_metrics["loss"], eval_time/60, eval_time % 60))
+                                                               self.test_data_loader else "evaluation", detailed_metrics["loss"], eval_time/60, eval_time % 60))
         torch.cuda.empty_cache()
 
-        
         return detailed_metrics
 
     def _train_batch(self, batch, iteration):

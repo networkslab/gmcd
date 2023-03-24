@@ -8,25 +8,17 @@ Default config. Will usually be overriden by a task specific config class.
 
 class RunConfig():
     def __init__(self) -> None:
-        self.set_boring_config()
+        self.set_fixed_config()
 
-        self.seed = 3  # 0
+        self.seed = 2  # 0
 
         # Maximum number of epochs to train
-        self.print_freq = 100  # Frequency loss information
-        self.eval_freq = 5000  # Frequency the model should be evaluated
-        self.batch_size = 1024  # Batch size
+        self.print_freq = 100  # Frequency print loss
+        self.eval_freq = 500  # Frequency evaluation (with samples)
         self.learning_rate = 7.5e-4  # Learning rate of the optimizer
-        self.scale_loss = 1e-4
+       # self.scale_loss = 1e-4
         self.diffusion_model = 'transformer'
-        self.input_dp_rate = 0.2
-        self.transformer_heads = 8
-        self.transformer_depth = 2
-        self.transformer_blocks = 1
-        self.transformer_local_heads = 4
-        self.transformer_local_size = 64
-        self.transformer_reversible = False
-        self.alpha = 1.1
+        self.alpha = None
 
     # config that are linked to other config, to be called if we change some values
 
@@ -51,7 +43,7 @@ class RunConfig():
         description = description + '_' + fcdm_description
         return description
 
-    def set_boring_config(self):
+    def set_fixed_config(self):
         # In which frequency the model should be saved (in number of iterations). Default: 10,000
         self.save_freq = 1e3
         # Whether to use all GPUs available or only one.
@@ -86,18 +78,4 @@ class RunConfig():
         # Delay which should be used in the scheduler for.
         self.beta_scheduler_delay = 0
 
-        # Add parameters for categorical encoding
-        # If selected, variational dequantization is used for encoding categorical data.", action="store_true")
-        # self.encoding_dequantization = False
-        # If selected, the encoder distribution is joint over categorical variables.", action="store_true")
-        # self.encoding_variational = False
-
-        # Flow parameters
-        # Number of flows used in the embedding layer.
-        # self.encoding_num_flows = 0
-        # Number of hidden layers of flows used in the parallel embedding layer.
-        # self.encoding_hidden_layers = 2
-        # Hidden size of flows used in the parallel embedding layer.
-        # self.encoding_hidden_size = 128
-        # Number of mixtures used in the coupling layers (if applicable).
-        # self.encoding_num_mixtures = 8
+     
