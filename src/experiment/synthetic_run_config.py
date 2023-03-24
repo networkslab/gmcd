@@ -54,5 +54,5 @@ class SyntheticRunConfig(RunConfig):
             self.transformer_local_heads = 4
             self.transformer_local_size = 64
             self.alpha = 1.1
-
+            self.corrected_var = 0.5
         super().set_dependent_config()

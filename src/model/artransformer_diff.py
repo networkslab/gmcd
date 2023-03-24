@@ -3,7 +3,6 @@ import torch as th
 import torch.distributions as D
 import torch.nn.functional as F
 from src.model.gaussian_diff import GaussianDiffusion
-
 from src.model.linear_transformer import DenoisingTransformer
 from src.model.diff_utils import LossType, ModelMeanType, ModelVarType, extract_into_tensor, get_named_beta_schedule, normal_kl
 
@@ -46,7 +45,7 @@ class ArTransformerDiffusion(GaussianDiffusion):
         except Exception as e:
             self.corrected_var = False
 
-        self.dynamics = DenoisingTransformer(
+        self.mixture_weights = DenoisingTransformer(
             K=K, S=S, latent_dim=latent_dim, diffusion_params=diffusion_params)
 
         # other coeff needed for the posterior N(z_t-1|z_t,x)
@@ -106,7 +105,7 @@ class ArTransformerDiffusion(GaussianDiffusion):
     def compute_Lt(self, z_0, z_t, t):
 
         z_t = z_t.reshape(-1, self.S, self.d)
-        logits_output = self.dynamics(t, z_t)  # get p_theta
+        logits_output = self.mixture_weights(t, z_t)  # get p_theta
         transformer_probs = logits_to_probs(logits_output)
 
         dist = self.get_zt_given(z_t, t)
@@ -184,11 +183,11 @@ class ArTransformerDiffusion(GaussianDiffusion):
 
        
        
-        logits_output = self.dynamics(t, z_t)
+        logits_output = self.mixture_weights(t, z_t)
         terms = {}
         transformer_probs = logits_to_probs(logits_output)
        
-       
+
         logits_output_flat = logits_output.reshape(-1, self.K)
         w = x_cat
         w_flat = w.view(-1)
@@ -209,7 +208,7 @@ class ArTransformerDiffusion(GaussianDiffusion):
     @th.no_grad()
     def sample(self, num_samples,  watch_z_t=False):
 
-        device = next(self.dynamics.parameters()).device
+        device = next(self.mixture_weights.parameters()).device
         shape = (num_samples, self.d_in)
         z = th.randn(*shape, device=device)
         z_T = z
@@ -236,7 +235,7 @@ class ArTransformerDiffusion(GaussianDiffusion):
         z_t = z_t.reshape(-1, self.S, self.d)
         b = z_t.shape[0]
 
-        logits = self.dynamics(t, z_t)  # B, S, K
+        logits = self.mixture_weights(t, z_t)  # B, S, K
         p_w_given_past = D.categorical.Categorical(logits=logits)
         w = p_w_given_past.sample()
 

@@ -1,5 +1,5 @@
 from src.sample_metrics import SamplesMetrics
-from src.optimizer.Scheduler import ExponentialScheduler
+from src.optimizer.scheduler import ExponentialScheduler
 from src.datasets.synthetic import SyntheticDataset
 from src.metrics import get_diff_metric
 from src.task_template import TaskTemplate
